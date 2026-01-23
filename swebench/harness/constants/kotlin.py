@@ -86,8 +86,8 @@ SPECS_KOTLIN_ANDROID = {
     "1.0.0": {
         "docker_specs": {"java_version": "17"},
         "pre_install": [KOTLIN_LOGS_COLLECTOR_SCRIPT, "chmod +x /root/kotlin_logs_collector.sh"],
-        "install": ["chmod +x gradlew", "./gradlew clean assemble"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew clean test", "/bin/bash /root/kotlin_logs_collector.sh",
+        "install": ["chmod +x gradlew", "./gradlew clean assemble -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\""],
+        "test_cmd": ["chmod +x gradlew", "./gradlew clean test -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
@@ -95,8 +95,8 @@ SPECS_KOTLIN_ANDROID_21 = {
     "1.0.0": {
         "docker_specs": {"java_version": "21"},
         "pre_install": [KOTLIN_LOGS_COLLECTOR_SCRIPT, "chmod +x /root/kotlin_logs_collector.sh"],
-        "install": ["chmod +x gradlew", "./gradlew clean assemble"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew clean test", "/bin/bash /root/kotlin_logs_collector.sh",
+        "install": ["chmod +x gradlew", "./gradlew clean assemble -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\""],
+        "test_cmd": ["chmod +x gradlew", "./gradlew clean test -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 

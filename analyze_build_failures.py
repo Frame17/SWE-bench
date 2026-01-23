@@ -29,7 +29,7 @@ def analyze_build_logs(instances_dir):
 
         content = "".join(lines)
 
-        if "Image built successfully!" in content or "Successfully built" in content:
+        if any(kw in content for kw in ["Image built successfully!", "Successfully built", "BUILD SUCCESSFUL"]):
             results.append({
                 "instance": instance_name,
                 "status": "success"
@@ -39,7 +39,8 @@ def analyze_build_logs(instances_dir):
             error_msg = "Unknown error"
 
             # Look for common failure indicators
-            oom_match = re.search(r".*(OutOfMemoryError.*)", content)
+            # Sophisticated OOM detection: avoid matching it in command line arguments
+            oom_match = re.search(r"(?<!\+HeapDumpOn)(OutOfMemoryError.*)", content)
             if oom_match:
                 error_msg = oom_match.group(1).strip()
             else:
@@ -59,8 +60,11 @@ def analyze_build_logs(instances_dir):
                             for j in range(i - 1, max(-1, i - 20), -1):
                                 line = lines[j]
                                 if any(kw in line for kw in
-                                       ["fatal:", "ERROR:", "FAILURE:", "BUILD FAILED", "OutOfMemoryError",
+                                       ["fatal:", "ERROR:", "FAILURE:", "BUILD FAILED",
                                         "Permission denied", "not found", "No such file"]):
+                                    specific_error = line.strip()
+                                    break
+                                if "OutOfMemoryError" in line and "+HeapDumpOn" not in line:
                                     specific_error = line.strip()
                                     break
                                 if "/root/setup_repo.sh: line" in line:
