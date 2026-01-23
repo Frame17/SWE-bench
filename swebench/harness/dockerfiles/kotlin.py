@@ -1,0 +1,58 @@
+_DOCKERFILE_BASE_KOTLIN = """FROM --platform={platform} gradle:8.13-jdk{java_version}-jammy
+
+WORKDIR /home/
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+  curl \
+  git \
+  bash \
+  ca-certificates \
+  openjdk-8-jdk \
+  openjdk-11-jdk \
+  openjdk-17-jdk \
+  openjdk-21-jdk \
+  unzip && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
+
+RUN update-ca-certificates
+
+RUN mkdir -p /root/.gradle && \
+  echo "org.gradle.java.installations.paths=/usr/lib/jvm/java-8-openjdk-amd64,/usr/lib/jvm/java-11-openjdk-amd64,/usr/lib/jvm/java-17-openjdk-amd64,/usr/lib/jvm/java-21-openjdk-amd64" >> /root/.gradle/gradle.properties && \
+  echo "org.gradle.jvmargs=-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> /root/.gradle/gradle.properties && \
+  echo "org.gradle.daemon=false" >> /root/.gradle/gradle.properties
+
+RUN $JAVA_HOME/bin/keytool -importkeystore -noprompt -trustcacerts \
+  -srckeystore /etc/ssl/certs/java/cacerts \
+  -destkeystore $JAVA_HOME/lib/security/cacerts \
+  -srcstorepass changeit -deststorepass changeit || true
+
+ENV ANDROID_SDK_ROOT=/opt/android-sdk \
+    ANDROID_HOME=/opt/android-sdk \
+    PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools
+
+
+RUN mkdir -p ${{ANDROID_SDK_ROOT}}/cmdline-tools && \
+  curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+  unzip sdk-tools.zip -d ${{ANDROID_SDK_ROOT}}/cmdline-tools && \
+  mv ${{ANDROID_SDK_ROOT}}/cmdline-tools/cmdline-tools ${{ANDROID_SDK_ROOT}}/cmdline-tools/latest && \
+  rm sdk-tools.zip
+
+RUN yes | sdkmanager --licenses && \
+  sdkmanager "platform-tools" \
+  "platforms;android-30" "platforms;android-31" "platforms;android-32" \
+  "platforms;android-33" "platforms;android-34" "platforms;android-35" \
+  "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
+  "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0"
+"""
+
+_DOCKERFILE_INSTANCE_KOTLIN = r"""FROM --platform={platform} {env_image_name}
+
+COPY ./setup_repo.sh /root/
+RUN /bin/bash /root/setup_repo.sh
+
+WORKDIR /testbed/
+"""

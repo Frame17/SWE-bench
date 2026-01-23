@@ -1,0 +1,44 @@
+[
+  {
+    "instance_id": "android__nowinandroid-2003",
+    "repo": "android/nowinandroid",
+    "issue_id": 2003,
+    "base_commit": "92fd6f66056b562f04fc22aabb5c79b74f66d603",
+    "problem_statement": "Remove feature module READMEs (they will be replaced by submodule READMEs)",
+    "version": "1.0.0",
+    "issue_url": "",
+    "pr_url": "https://github.com/android/nowinandroid/pull/2003",
+    "patch": "diff --git a/README.md b/README.md\nindex 1234567..89abcde 100644\n--- a/README.md\n+++ b/README.md\n@@ -1,1 +1,2 @@\n # Now in Android\n+# Dummy change for trial run",    "test_patch": "",
+    "created_at": "2024-01-01T00:00:00Z",
+    "FAIL_TO_PASS": [],
+    "PASS_TO_PASS": []
+  },
+  {
+    "instance_id": "android__nowinandroid-1930",
+    "repo": "android/nowinandroid",
+    "issue_id": 1930,
+    "base_commit": "c48c8381e1d97eccfdcd367759c8af5d5cdaa4d6",
+    "problem_statement": "Upgradle to 9.0.0",
+    "version": "1.0.0",
+    "issue_url": "",
+    "pr_url": "https://github.com/android/nowinandroid/pull/1930",
+    "patch": "diff --git a/README.md b/README.md\nindex 1234567..89abcde 100644\n--- a/README.md\n+++ b/README.md\n@@ -1,1 +1,2 @@\n # Now in Android\n+# Dummy change for trial run",    "test_patch": "",
+    "created_at": "2024-01-01T00:00:00Z",
+    "FAIL_TO_PASS": [],
+    "PASS_TO_PASS": []
+  },
+  {
+    "instance_id": "android__nowinandroid-1913",
+    "repo": "android/nowinandroid",
+    "issue_id": 1913,
+    "base_commit": "149a345595624742ce1a2a27fb518a10f3a87b9a",
+    "problem_statement": "Move to a custom setup for BuildConfig.BACKEND_URL",
+    "version": "1.0.0",
+    "issue_url": "",
+    "pr_url": "https://github.com/android/nowinandroid/pull/1913",
+    "patch": "diff --git a/README.md b/README.md\nindex 1234567..89abcde 100644\n--- a/README.md\n+++ b/README.md\n@@ -1,1 +1,2 @@\n # Now in Android\n+# Dummy change for trial run",    "test_patch": "",
+    "created_at": "2024-01-01T00:00:00Z",
+    "FAIL_TO_PASS": [],
+    "PASS_TO_PASS": []
+  }
+]
