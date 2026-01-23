@@ -10,7 +10,15 @@ RUN apt-get update && \
   git \
   bash \
   ca-certificates \
-  unzip && \
+  unzip \
+  libncurses5 \
+  libvulkan1 \
+  libpulse0 \
+  libgl1 \
+  libxml2 \
+  openjdk-11-jdk-headless \
+  openjdk-17-jdk-headless \
+  openjdk-21-jdk-headless && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
@@ -20,7 +28,8 @@ RUN mkdir -p /root/.gradle && \
   echo "org.gradle.daemon=false" >> /root/.gradle/gradle.properties && \
   echo "org.gradle.jvmargs=-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> /root/.gradle/gradle.properties && \
   echo "org.gradle.java.installations.auto-detect=true" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.java.installations.auto-download=true" >> /root/.gradle/gradle.properties
+  echo "org.gradle.java.installations.auto-download=true" >> /root/.gradle/gradle.properties && \
+  echo "org.gradle.java.installations.paths=/usr/lib/jvm/java-11-openjdk-amd64,/usr/lib/jvm/java-17-openjdk-amd64,/usr/lib/jvm/java-21-openjdk-amd64" >> /root/.gradle/gradle.properties
 
 ENV GRADLE_OPTS="-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 ENV JAVA_OPTS="-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
