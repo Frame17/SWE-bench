@@ -109,16 +109,22 @@ def parse_log_gradle(log: str, test_spec: TestSpec) -> dict[str, str]:
 MAP_REPO_TO_PARSER_KOTLIN = {
     repo: parse_log_gradle
     for repo in [
-        "square/moshi",
         "Aliucord/Aliucord",
+        "AllanWang/Frost-for-Facebook",
+        "AppIntro/AppIntro",
+        "DroidKaigi/conference-app-2021",
+        "DroidKaigi/conference-app-2023",
+        "GetStream/whatsApp-clone-compose",
+        "GrapheneOS/Camera",
         "IacobIonut01/Gallery",
         "LemmyNet/jerboa",
         "LibChecker/LibChecker",
+        "MMRLApp/MMRL",
+        "Mahmud0808/ColorBlendr",
         "Pool-Of-Tears/GreenStash",
         "Pool-Of-Tears/Myne",
         "T8RIN/ImageToolbox",
         "TrianguloY/URLCheck",
-        "android/nowinandroid",
         "android/socialite",
         "aniyomiorg/aniyomi",
         "d4rken-org/capod",
@@ -133,7 +139,6 @@ MAP_REPO_TO_PARSER_KOTLIN = {
         "owncloud/android",
         "recloudstream/cloudstream",
         "spacecowboy/Feeder",
-        "thunderbird/thunderbird-android",
         "wikimedia/apps-android-wikipedia",
     ]
 }

@@ -125,9 +125,17 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
         repo: SPECS_KOTLIN_ANDROID
         for repo in [
             "Aliucord/Aliucord",
+            "AllanWang/Frost-for-Facebook",
+            "AppIntro/AppIntro",
+            "DroidKaigi/conference-app-2021",
+            "DroidKaigi/conference-app-2023",
+            "GetStream/whatsApp-clone-compose",
+            "GrapheneOS/Camera",
             "IacobIonut01/Gallery",
             "LemmyNet/jerboa",
             "LibChecker/LibChecker",
+            "MMRLApp/MMRL",
+            "Mahmud0808/ColorBlendr",
             "Pool-Of-Tears/GreenStash",
             "Pool-Of-Tears/Myne",
             "T8RIN/ImageToolbox",

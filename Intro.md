@@ -38,12 +38,7 @@ A dataset of potential SWE-bench task instances (repos, issues, and patches).
 
 ### Running the Evaluation (better on linux machine):
 ```shell
- python -m swebench.harness.run_evaluation \                                                                      
-    --dataset_name candidates_swe_bench.json \
-    --predictions_path gold \
-    --max_workers 1 \
-    --run_id "evaluation-run-1" \
-    --namespace ""
+/bin/bash run_evaluation.sh
 ```
 
 ### Further Reading (Usage)
