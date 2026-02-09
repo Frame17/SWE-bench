@@ -163,6 +163,7 @@ cython_debug/
 .api_key
 .keys
 .vscode/
+.idea/
 *.jsonl
 *.jsonl.*
 *.patch
