@@ -11,6 +11,7 @@ RUN apt-get update && \
   bash \
   ca-certificates \
   unzip \
+  zip \
   libncurses5 \
   libvulkan1 \
   libpulse0 \
@@ -23,6 +24,26 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/*
 
 RUN update-ca-certificates
+
+# Install SDKMAN and Gradle versions 8.6-9.2 (latest patch releases)
+RUN curl -s "https://get.sdkman.io" | bash && \
+  bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
+  sdk install gradle 8.6 && \
+  sdk install gradle 8.7 && \
+  sdk install gradle 8.8 && \
+  sdk install gradle 8.9 && \
+  sdk install gradle 8.10.2 && \
+  sdk install gradle 8.11.1 && \
+  sdk install gradle 8.12.1 && \
+  sdk install gradle 8.13 && \
+  sdk install gradle 8.14.4 && \
+  sdk install gradle 9.0.0 && \
+  sdk install gradle 9.1.0 && \
+  sdk install gradle 9.2.1 && \
+  sdk default gradle 8.13"
+
+ENV SDKMAN_DIR=/root/.sdkman
+ENV PATH=$SDKMAN_DIR/candidates/gradle/current/bin:$PATH
 
 RUN mkdir -p /root/.gradle && \
   echo "org.gradle.daemon=false" >> /root/.gradle/gradle.properties && \
