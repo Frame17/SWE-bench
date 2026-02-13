@@ -93,8 +93,8 @@ SPECS_KOTLIN_ANDROID = {
             "mkdir -p core/settings/ && echo '{}' > core/settings/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
-        "install": ["chmod +x gradlew", "./gradlew clean assemble -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew clean test -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
+        "install": ["chmod +x gradlew", "./gradlew assemble --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
+        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
@@ -108,8 +108,8 @@ SPECS_KOTLIN_ANDROID_21 = {
             "mkdir -p app/ && echo '{}' > app/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
-        "install": ["chmod +x gradlew", "./gradlew clean assemble -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew clean test -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
+        "install": ["chmod +x gradlew", "./gradlew assemble --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
+        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
