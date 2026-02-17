@@ -155,6 +155,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "recloudstream/cloudstream",
             "spacecowboy/Feeder",
             "wikimedia/apps-android-wikipedia",
+            "AppIntro/AppIntro"
         ]
     }
 }
