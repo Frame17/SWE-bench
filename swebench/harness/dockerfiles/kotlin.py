@@ -11,6 +11,7 @@ RUN apt-get update && \
   bash \
   ca-certificates \
   unzip \
+  zip \
   libncurses5 \
   libvulkan1 \
   libpulse0 \
@@ -24,12 +25,33 @@ RUN apt-get update && \
 
 RUN update-ca-certificates
 
+# Install SDKMAN and various Gradle versions used by test data
+# Add to this list as new Gradle versions are discovered in use by test data)
+RUN curl -s "https://get.sdkman.io" | bash
+RUN bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
+    sdk install gradle 8.6 && \
+    sdk install gradle 8.8 && \
+    sdk install gradle 8.9 && \
+    sdk install gradle 8.10.2 && \
+    sdk install gradle 8.11.1 && \
+    sdk install gradle 8.12.1 && \
+    sdk install gradle 8.13 && \
+    sdk install gradle 8.14.3 && \
+    sdk install gradle 8.14.4 && \
+    sdk install gradle 9.0.0 && \
+    sdk install gradle 9.1.0 && \
+    sdk install gradle 9.2.1 && \
+    sdk install gradle 9.3.1 && \
+    sdk default gradle 9.3.1"
+
 RUN mkdir -p /root/.gradle && \
-  echo "org.gradle.daemon=false" >> /root/.gradle/gradle.properties && \
   echo "org.gradle.jvmargs=-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> /root/.gradle/gradle.properties && \
   echo "org.gradle.java.installations.auto-detect=true" >> /root/.gradle/gradle.properties && \
   echo "org.gradle.java.installations.auto-download=true" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.java.installations.paths=/usr/lib/jvm/java-11-openjdk-amd64,/usr/lib/jvm/java-17-openjdk-amd64,/usr/lib/jvm/java-21-openjdk-amd64" >> /root/.gradle/gradle.properties
+  echo "org.gradle.caching=true" >> /root/.gradle/gradle.properties && \
+  echo "org.gradle.parallel=true" >> /root/.gradle/gradle.properties && \
+  echo "org.gradle.vfs.watch=false" >> /root/.gradle/gradle.properties && \
+  echo "org.gradle.workers.max=24" >> /root/.gradle/gradle.properties
 
 ENV GRADLE_OPTS="-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 ENV JAVA_OPTS="-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"

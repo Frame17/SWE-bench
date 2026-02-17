@@ -140,5 +140,6 @@ MAP_REPO_TO_PARSER_KOTLIN = {
         "recloudstream/cloudstream",
         "spacecowboy/Feeder",
         "wikimedia/apps-android-wikipedia",
+        "AppIntro/AppIntro"
     ]
 }
