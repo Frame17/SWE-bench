@@ -17,6 +17,7 @@ RUN apt-get update && \
   libpulse0 \
   libgl1 \
   libxml2 \
+  patch \
   openjdk-11-jdk-headless \
   openjdk-17-jdk-headless \
   openjdk-21-jdk-headless && \
@@ -29,6 +30,7 @@ RUN update-ca-certificates
 # Add to this list as new Gradle versions are discovered in use by test data)
 RUN curl -s "https://get.sdkman.io" | bash
 RUN bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
+    sdk install gradle 7.6.1 && \
     sdk install gradle 8.6 && \
     sdk install gradle 8.8 && \
     sdk install gradle 8.9 && \
