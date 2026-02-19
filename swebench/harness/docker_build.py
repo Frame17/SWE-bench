@@ -39,6 +39,42 @@ class BuildImageError(Exception):
         )
 
 
+def get_image_platform(client: docker.DockerClient, image_name: str) -> str:
+    """
+    Get the platform of an existing Docker image by inspecting its attributes.
+
+    Args:
+        client (docker.DockerClient): Docker client to use for inspecting the image
+        image_name (str): Name of the image to inspect
+
+    Returns:
+        str: Platform string (e.g., "linux/amd64", "linux/arm64/v8")
+    """
+    try:
+        image = client.images.get(image_name)
+        attrs = image.attrs
+
+        # Get architecture and OS from image attributes
+        arch = attrs.get("Architecture", "amd64")
+        os_name = attrs.get("Os", "linux")
+
+        # Variant is optional (e.g., v8 for arm64)
+        variant = attrs.get("Variant", "")
+
+        # Construct platform string
+        if variant:
+            platform = f"{os_name}/{arch}/{variant}"
+        else:
+            platform = f"{os_name}/{arch}"
+
+        return platform
+    except docker.errors.ImageNotFound:
+        raise
+    except Exception as e:
+        # If we can't determine the platform, return None and let the caller handle it
+        return None
+
+
 def setup_logger(instance_id: str, log_file: Path, mode="w", add_stdout: bool = False):
     """
     This logger is used for logging the build process of images and containers.
@@ -513,13 +549,27 @@ def build_container(
         run_args = test_spec.docker_specs.get("run_args", {})
         cap_add = run_args.get("cap_add", [])
 
+        # Get the actual platform of the image
+        image_platform = get_image_platform(client, test_spec.instance_image_key)
+        if image_platform is None:
+            # Fall back to test_spec.platform if we can't determine the image platform
+            image_platform = test_spec.platform
+            logger.warning(
+                f"Could not determine platform for image {test_spec.instance_image_key}, "
+                f"using test_spec.platform: {image_platform}"
+            )
+        else:
+            logger.info(
+                f"Using platform {image_platform} from image {test_spec.instance_image_key}"
+            )
+
         container = client.containers.create(
             image=test_spec.instance_image_key,
             name=test_spec.get_instance_container_name(run_id),
             user=DOCKER_USER,
             detach=True,
             command="tail -f /dev/null",
-            platform=test_spec.platform,
+            platform=image_platform,
             cap_add=cap_add,
         )
         logger.info(f"Container for {test_spec.instance_id} created: {container.id}")
