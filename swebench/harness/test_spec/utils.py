@@ -32,6 +32,11 @@ def make_repo_script_list_common(
         f"cd {repo_directory}",
         f"git reset --hard {base_commit}",
         "git remote remove origin",  # Remove the remote so the agent won't see newer commits
+        # After the repository is set up, convert any Gradle wrapper distribution URLs that
+        # reference "-all.zip" to the smaller "-bin.zip" distribution. Doing this here
+        # (in the generated setup_repo.sh) avoids a Dockerfile-specific RUN step and
+        # prevents downloading larger 'all' distributions during builds inside the image.
+        f"find {repo_directory} -type f -path '*/gradle/wrapper/gradle-wrapper.properties' -exec sed -i -E \"s#(distributionUrl=.*)-all(\\.zip)#\\1-bin\\2#g\" {{}} + || true",
     ]
     if "pre_install" in specs:
         setup_commands.extend(specs["pre_install"])

@@ -81,9 +81,9 @@ class TestSpec:
             val = hash_value[
                 :10
             ]  # 10 characters is still likely to be unique given only a few base images will be created
-            return f"sweb.base.{MAP_REPO_TO_EXT[self.repo]}.{self.arch}.{val}:{self.base_image_tag}"
+            return f"sweb.base.{MAP_REPO_TO_EXT[self.repo]}.{val}:{self.base_image_tag}"
         return (
-            f"sweb.base.{MAP_REPO_TO_EXT[self.repo]}.{self.arch}:{self.base_image_tag}"
+            f"sweb.base.{MAP_REPO_TO_EXT[self.repo]}:{self.base_image_tag}"
         )
 
     @property
@@ -101,11 +101,11 @@ class TestSpec:
         hash_object.update(hash_key.encode("utf-8"))
         hash_value = hash_object.hexdigest()
         val = hash_value[:22]  # 22 characters is still very likely to be unique
-        return f"sweb.env.{MAP_REPO_TO_EXT[self.repo]}.{self.arch}.{val}:{self.env_image_tag}"
+        return f"sweb.env.{MAP_REPO_TO_EXT[self.repo]}.{val}:{self.env_image_tag}"
 
     @property
     def instance_image_key(self):
-        key = f"sweb.eval.{self.arch}.{self.instance_id.lower()}:{self.instance_image_tag}"
+        key = f"sweb.eval.{self.instance_id.lower()}:{self.instance_image_tag}"
         if self.is_remote_image:
             key = f"{self.namespace}/{key}".replace("__", "_1776_")
         return key
