@@ -247,7 +247,7 @@ def collect_tests_for_instance(
         # Stop and remove the container to reset state
         instance_logger.info("Stopping container to reset state...")
         container.stop()
-        container.remove()
+        container.remove(v=True)
         
         # Build and start a fresh container for after-patch tests
         instance_logger.info("Starting fresh container for after-patch tests...")

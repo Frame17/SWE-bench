@@ -161,7 +161,7 @@ def cleanup_container(client, container, logger):
     # Attempt to remove the container
     try:
         log_info(f"Attempting to remove container {container.name}...")
-        container.remove(force=True)
+        container.remove(force=True, v=True)
         log_info(f"Container {container.name} removed.")
     except Exception as e:
         if raise_error:
