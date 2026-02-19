@@ -82,19 +82,32 @@ echo "Merged ${#junit_files[@]} files → $MERGED_PATH"
 KOTLIN_LOGS_EOF
 """
 
+STATIC_VERIFICATION_SCRIPT = r"""cat > /root/static_verification.sh << 'STATIC_VERIFICATION_EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+./gradlew tasks
+
+echo "STATIC VERIFICATION SUCCESS"
+STATIC_VERIFICATION_EOF
+"""
+
 SPECS_KOTLIN_ANDROID = {
     "1.0.0": {
         "docker_specs": {"java_version": "17"},
         "pre_install": [
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
+            STATIC_VERIFICATION_SCRIPT,
+            "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
             "mkdir -p app/ && echo '{}' > app/google-services.json",
             "mkdir -p core/settings/ && echo '{}' > core/settings/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
         "install": ["chmod +x gradlew", "./gradlew assemble --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
+        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
@@ -104,12 +117,14 @@ SPECS_KOTLIN_ANDROID_21 = {
         "pre_install": [
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
+            STATIC_VERIFICATION_SCRIPT,
+            "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
             "mkdir -p app/ && echo '{}' > app/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
         "install": ["chmod +x gradlew", "./gradlew assemble --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/kotlin_logs_collector.sh",
+        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 

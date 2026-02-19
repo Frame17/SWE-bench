@@ -55,6 +55,12 @@ def parse_log_gradle(log: str, test_spec: TestSpec) -> dict[str, str]:
             for test in skipped_tests:
                 test_status_map[test] = TestStatus.SKIPPED.value
 
+            # Check for static verification success
+            if "STATIC VERIFICATION SUCCESS" in log:
+                test_status_map["static_verification"] = TestStatus.PASSED.value
+            else:
+                test_status_map["static_verification"] = TestStatus.FAILED.value
+
             return test_status_map
         except ET.ParseError:
             pass
@@ -102,6 +108,12 @@ def parse_log_gradle(log: str, test_spec: TestSpec) -> dict[str, str]:
         test_status_map[test] = TestStatus.FAILED.value
     for test in skipped_tests:
         test_status_map[test] = TestStatus.SKIPPED.value
+
+    # Check for static verification success
+    if "STATIC VERIFICATION SUCCESS" in log:
+        test_status_map["static_verification"] = TestStatus.PASSED.value
+    else:
+        test_status_map["static_verification"] = TestStatus.FAILED.value
 
     return test_status_map
 
