@@ -81,7 +81,7 @@ else:
 # Provide an explanatory variable for consumers of this module
 DETECTED_DOCKER_PLATFORM = _DEFAULT_PLATFORM
 
-_DOCKERFILE_BASE_KOTLIN = """FROM --platform={platform} gradle:8.13-jdk{java_version}-jammy
+_DOCKERFILE_BASE_KOTLIN = """FROM --platform={platform} gradle:9.3.1-jdk{java_version}-jammy
 
 WORKDIR /home/
 ENV DEBIAN_FRONTEND=noninteractive
@@ -199,7 +199,7 @@ RUN yes | sdkmanager --licenses && \
   "platforms;android-30" "platforms;android-31" "platforms;android-32" \
   "platforms;android-33" "platforms;android-34" "platforms;android-35" \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
-  "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0"
+  "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0"
 
 """ + _priming_block
 
