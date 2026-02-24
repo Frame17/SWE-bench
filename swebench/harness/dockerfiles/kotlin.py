@@ -30,20 +30,9 @@ RUN update-ca-certificates
 # Add to this list as new Gradle versions are discovered in use by test data)
 RUN curl -s "https://get.sdkman.io" | bash
 RUN bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
-    sdk install gradle 7.6.1 && \
-    sdk install gradle 8.6 && \
-    sdk install gradle 8.8 && \
-    sdk install gradle 8.9 && \
-    sdk install gradle 8.10.2 && \
-    sdk install gradle 8.11.1 && \
-    sdk install gradle 8.12.1 && \
-    sdk install gradle 8.13 && \
-    sdk install gradle 8.14.3 && \
-    sdk install gradle 8.14.4 && \
-    sdk install gradle 9.0.0 && \
-    sdk install gradle 9.1.0 && \
-    sdk install gradle 9.2.1 && \
-    sdk install gradle 9.3.1 && \
+    for v in 7.6.1 8.6 8.8 8.9 8.10.2 8.11.1 8.12.1 8.13 8.14.3 8.14.4 9.0.0 9.1.0 9.2.1 9.3.1; do \
+      sdk install gradle $v && sdk flush archives && sdk flush temp; \
+    done && \
     sdk default gradle 9.3.1"
 
 RUN mkdir -p /root/.gradle && \
