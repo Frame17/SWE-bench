@@ -1,3 +1,59 @@
+# --add-exports and --add-opens flags required for KAPT compatibility with JDK 17+.
+# KAPT accesses internal javac APIs (com.sun.tools.javac.*) which are encapsulated
+# by the Java module system starting in JDK 17. Without these, KAPT tasks fail with:
+#   IllegalAccessError: module jdk.compiler does not export com.sun.tools.javac.util
+# --add-exports: allows direct access to the package's public types
+# --add-opens:   additionally allows deep reflective access
+_KAPT_JAVAC_PACKAGES = [
+    "com.sun.tools.javac.api",
+    "com.sun.tools.javac.code",
+    "com.sun.tools.javac.comp",
+    "com.sun.tools.javac.file",
+    "com.sun.tools.javac.jvm",
+    "com.sun.tools.javac.main",
+    "com.sun.tools.javac.model",
+    "com.sun.tools.javac.parser",
+    "com.sun.tools.javac.processing",
+    "com.sun.tools.javac.tree",
+    "com.sun.tools.javac.util",
+]
+
+# Additional JDK internal packages needed by the Kotlin compiler itself
+# (not just KAPT). FileChannelUtil needs sun.nio.ch.FileChannelImpl.
+_KOTLIN_JDK_PACKAGES = [
+    ("java.base", "sun.nio.ch"),
+]
+
+_KAPT_MODULE_FLAGS = " ".join(
+    [
+        f"--add-exports=jdk.compiler/{pkg}=ALL-UNNAMED "
+        f"--add-opens=jdk.compiler/{pkg}=ALL-UNNAMED"
+        for pkg in _KAPT_JAVAC_PACKAGES
+    ] + [
+        f"--add-exports={mod}/{pkg}=ALL-UNNAMED "
+        f"--add-opens={mod}/{pkg}=ALL-UNNAMED"
+        for mod, pkg in _KOTLIN_JDK_PACKAGES
+    ]
+)
+
+# Script that (re-)creates /root/.gradle/gradle.properties with the KAPT
+# module-access flags.  This runs inside setup_repo.sh so it executes during
+# the *instance* image build — which is always freshly built — rather than
+# relying on a potentially stale/cached env image layer.
+GRADLE_PROPERTIES_SCRIPT = (
+    'mkdir -p /root/.gradle && '
+    'printf "%s\\n"'
+    ' "org.gradle.jvmargs=-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8 ' + _KAPT_MODULE_FLAGS + '"'
+    ' "org.gradle.java.installations.auto-detect=true"'
+    ' "org.gradle.java.installations.auto-download=true"'
+    ' "org.gradle.caching=true"'
+    ' "org.gradle.parallel=true"'
+    ' "org.gradle.workers.max=8"'
+    ' "org.gradle.vfs.watch=false"'
+    ' "kotlin.daemon.jvmargs=-Xmx8g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8 ' + _KAPT_MODULE_FLAGS + '"'
+    ' > /root/.gradle/gradle.properties'
+)
+
 KOTLIN_LOGS_COLLECTOR_SCRIPT = r"""cat > /root/kotlin_logs_collector.sh << 'KOTLIN_LOGS_EOF'
 #!/usr/bin/env bash
 
@@ -97,6 +153,7 @@ SPECS_KOTLIN_ANDROID = {
     "1.0.0": {
         "docker_specs": {"java_version": "17"},
         "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
@@ -106,8 +163,10 @@ SPECS_KOTLIN_ANDROID = {
             "mkdir -p core/settings/ && echo '{}' > core/settings/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
-        "install": ["chmod +x gradlew", "./gradlew assemble --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
+        "install": ["chmod +x gradlew",
+                    "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+                    "./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
+        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
@@ -115,6 +174,7 @@ SPECS_KOTLIN_ANDROID_21 = {
     "1.0.0": {
         "docker_specs": {"java_version": "21"},
         "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
@@ -123,9 +183,21 @@ SPECS_KOTLIN_ANDROID_21 = {
             "mkdir -p app/ && echo '{}' > app/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
-        "install": ["chmod +x gradlew", "./gradlew assemble --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false || ./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs -Dorg.gradle.jvmargs=\"-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\"", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
+        "install": ["chmod +x gradlew",
+                    "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+                    "./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
+        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
+}
+
+# Repos that use older Kotlin/Native versions (< 1.8) which don't ship
+# linux-aarch64 prebuilt binaries. These must be built under x86_64 even on
+# ARM hosts (Docker will use QEMU emulation automatically).
+SPECS_KOTLIN_ANDROID_X86 = {
+    "1.0.0": {
+        **SPECS_KOTLIN_ANDROID["1.0.0"],
+        "docker_specs": {**SPECS_KOTLIN_ANDROID["1.0.0"]["docker_specs"], "arch": "x86_64"},
+    }
 }
 
 MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
@@ -142,7 +214,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "Aliucord/Aliucord",
             "AllanWang/Frost-for-Facebook",
             "AppIntro/AppIntro",
-            "DroidKaigi/conference-app-2021",
             "DroidKaigi/conference-app-2023",
             "GetStream/whatsApp-clone-compose",
             "GrapheneOS/Camera",
@@ -154,7 +225,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "NordicSemiconductor/Android-DFU-Library",
             "Pool-Of-Tears/GreenStash",
             "Pool-Of-Tears/Myne",
-            "Shabinder/SpotiFlyer",
             "Stypox/dicio-android",
             "T8RIN/ImageToolbox",
             "Tapadoo/Alerter",
@@ -171,7 +241,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "iSoron/uhabits",
             "jaredsburrows/android-gradle-java-app-template",
             "jarnedemeulemeester/findroid",
-            "kasem-sm/SlimeKT",
             "keymapperorg/KeyMapper",
             "kylecorry31/Trail-Sense",
             "leonlatsch/Photok",
@@ -186,7 +255,18 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "you-apps/ClockYou",
             "you-apps/RecordYou"
         ]
-    }
+    },
+    # Repos that use Kotlin/Native (e.g. Kotlin Multiplatform with iOS targets)
+    # with Kotlin versions < 1.8 that lack linux-aarch64 prebuilt binaries.
+    # These must build under x86_64 (QEMU emulation on ARM hosts).
+    **{
+        repo: SPECS_KOTLIN_ANDROID_X86
+        for repo in [
+            "DroidKaigi/conference-app-2021",
+            "Shabinder/SpotiFlyer",
+            "kasem-sm/SlimeKT",
+        ]
+    },
 }
 
 MAP_REPO_TO_INSTALL_KOTLIN = {
