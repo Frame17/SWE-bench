@@ -176,3 +176,5 @@ notebooks/
 
 inputs/
 outputs/
+
+.github/copilot-instructions.md
