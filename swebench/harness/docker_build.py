@@ -3,6 +3,8 @@ from __future__ import annotations
 import docker
 import docker.errors
 import logging
+import platform as _platform
+import subprocess
 import sys
 import traceback
 
@@ -22,6 +24,27 @@ from swebench.harness.test_spec.test_spec import (
     TestSpec,
 )
 from swebench.harness.utils import ansi_escape, run_threadpool
+
+
+def _is_cross_platform_build(target_platform: str) -> bool:
+    """Return True when the build targets a platform different from the host.
+
+    The Docker SDK's legacy builder (``client.api.build``) cannot resolve
+    locally-built images whose architecture differs from the host.  When this
+    function returns ``True`` the caller should fall back to
+    ``docker buildx build --load`` which handles cross-platform local images
+    correctly.
+    """
+    machine = _platform.machine().lower()
+    if machine in ("x86_64", "amd64"):
+        host_platform = "linux/x86_64"
+    elif machine in ("arm64", "aarch64"):
+        host_platform = "linux/arm64/v8"
+    else:
+        # Unknown host – be conservative and assume same platform.
+        return False
+
+    return target_platform != host_platform
 
 
 class BuildImageError(Exception):
@@ -124,30 +147,68 @@ def build_image(
         logger.info(
             f"Building docker image {image_name} in {build_dir} with platform {platform}"
         )
-        response = client.api.build(
-            path=str(build_dir),
-            tag=image_name,
-            rm=True,
-            forcerm=True,
-            decode=True,
-            platform=platform,
-            nocache=nocache,
-        )
 
-        # Log the build process continuously
-        buildlog = ""
-        for chunk in response:
-            if "stream" in chunk:
-                # Remove ANSI escape sequences from the log
-                chunk_stream = ansi_escape(chunk["stream"])
-                logger.info(chunk_stream.strip())
-                buildlog += chunk_stream
-            elif "errorDetail" in chunk:
-                # Decode error message, raise BuildError
-                logger.error(f"Error: {ansi_escape(chunk['errorDetail']['message'])}")
+        if _is_cross_platform_build(platform):
+            # The Docker SDK's legacy builder (client.api.build) cannot
+            # resolve locally-built images when the target platform differs
+            # from the host architecture.  Use ``docker buildx build --load``
+            # instead, which uses BuildKit and handles this correctly.
+            logger.info(
+                f"Cross-platform build detected (target={platform}). "
+                "Using 'docker buildx build --load'."
+            )
+            cmd = [
+                "docker", "buildx", "build",
+                "--platform", platform,
+                "--load",
+                "--tag", image_name,
+            ]
+            if nocache:
+                cmd.append("--no-cache")
+            cmd.append(str(build_dir))
+
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            buildlog = ""
+            for line in process.stdout:
+                clean_line = ansi_escape(line)
+                logger.info(clean_line.rstrip())
+                buildlog += clean_line
+            process.wait()
+            if process.returncode != 0:
                 raise docker.errors.BuildError(
-                    chunk["errorDetail"]["message"], buildlog
+                    f"docker buildx build exited with code {process.returncode}",
+                    buildlog,
                 )
+        else:
+            response = client.api.build(
+                path=str(build_dir),
+                tag=image_name,
+                rm=True,
+                forcerm=True,
+                decode=True,
+                platform=platform,
+                nocache=nocache,
+            )
+
+            # Log the build process continuously
+            buildlog = ""
+            for chunk in response:
+                if "stream" in chunk:
+                    # Remove ANSI escape sequences from the log
+                    chunk_stream = ansi_escape(chunk["stream"])
+                    logger.info(chunk_stream.strip())
+                    buildlog += chunk_stream
+                elif "errorDetail" in chunk:
+                    # Decode error message, raise BuildError
+                    logger.error(f"Error: {ansi_escape(chunk['errorDetail']['message'])}")
+                    raise docker.errors.BuildError(
+                        chunk["errorDetail"]["message"], buildlog
+                    )
         logger.info("Image built successfully!")
     except docker.errors.BuildError as e:
         logger.error(f"docker.errors.BuildError during {image_name}: {e}")

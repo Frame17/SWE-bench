@@ -13,6 +13,7 @@ from swebench.harness.dockerfiles.java import (
 from swebench.harness.dockerfiles.kotlin import (
     _DOCKERFILE_BASE_KOTLIN,
     _DOCKERFILE_INSTANCE_KOTLIN,
+    get_host_arch,
 )
 from swebench.harness.dockerfiles.javascript import (
     _DOCKERFILE_BASE_JS,
@@ -110,4 +111,5 @@ __all__ = [
     "get_dockerfile_base",
     "get_dockerfile_env",
     "get_dockerfile_instance",
+    "get_host_arch",
 ]

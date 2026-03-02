@@ -1,4 +1,25 @@
-_DOCKERFILE_BASE_KOTLIN = """FROM --platform={platform} gradle:8.13-jdk{java_version}-jammy
+import platform as _platform
+
+
+def get_host_arch() -> str:
+    """Detect the host CPU architecture.
+
+    Returns:
+        "x86_64" on Intel/AMD hosts, "arm64" on Apple Silicon / ARM hosts.
+    """
+    machine = _platform.machine().lower()
+    if machine in ("x86_64", "amd64"):
+        return "x86_64"
+    elif machine in ("arm64", "aarch64"):
+        return "arm64"
+    else:
+        raise ValueError(
+            f"Unsupported host architecture: {machine}. "
+            "Expected x86_64/amd64 or arm64/aarch64."
+        )
+
+
+_DOCKERFILE_BASE_KOTLIN = """FROM --platform={platform} gradle:9.3.1-jdk{java_version}-jammy
 
 WORKDIR /home/
 ENV DEBIAN_FRONTEND=noninteractive
@@ -26,37 +47,13 @@ RUN apt-get update && \
 
 RUN update-ca-certificates
 
-# Install SDKMAN and various Gradle versions used by test data
-# Add to this list as new Gradle versions are discovered in use by test data)
+# Install SDKMAN and latest Gradle version (9.3.1)
+# Update these commands as new Gradle versions are released
 RUN curl -s "https://get.sdkman.io" | bash
 RUN bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
-    sdk install gradle 7.6.1 && \
-    sdk install gradle 8.6 && \
-    sdk install gradle 8.8 && \
-    sdk install gradle 8.9 && \
-    sdk install gradle 8.10.2 && \
-    sdk install gradle 8.11.1 && \
-    sdk install gradle 8.12.1 && \
-    sdk install gradle 8.13 && \
-    sdk install gradle 8.14.3 && \
-    sdk install gradle 8.14.4 && \
-    sdk install gradle 9.0.0 && \
-    sdk install gradle 9.1.0 && \
-    sdk install gradle 9.2.1 && \
     sdk install gradle 9.3.1 && \
     sdk default gradle 9.3.1"
 
-RUN mkdir -p /root/.gradle && \
-  echo "org.gradle.jvmargs=-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.java.installations.auto-detect=true" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.java.installations.auto-download=true" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.caching=true" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.parallel=true" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.vfs.watch=false" >> /root/.gradle/gradle.properties && \
-  echo "org.gradle.workers.max=24" >> /root/.gradle/gradle.properties
-
-ENV GRADLE_OPTS="-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
-ENV JAVA_OPTS="-Xmx20g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 ENV GRADLE_USER_HOME=/root/.gradle
 
 RUN $JAVA_HOME/bin/keytool -importkeystore -noprompt -trustcacerts \
@@ -67,7 +64,6 @@ RUN $JAVA_HOME/bin/keytool -importkeystore -noprompt -trustcacerts \
 ENV ANDROID_SDK_ROOT=/opt/android-sdk \
     ANDROID_HOME=/opt/android-sdk \
     PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools
-
 
 RUN mkdir -p ${{ANDROID_SDK_ROOT}}/cmdline-tools && \
   curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
@@ -80,7 +76,7 @@ RUN yes | sdkmanager --licenses && \
   "platforms;android-30" "platforms;android-31" "platforms;android-32" \
   "platforms;android-33" "platforms;android-34" "platforms;android-35" \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
-  "build-tools;33.0.0" "build-tools;34.0.0" "build-tools;35.0.0"
+  "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0"
 """
 
 _DOCKERFILE_INSTANCE_KOTLIN = r"""FROM --platform={platform} {env_image_name}
