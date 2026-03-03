@@ -209,6 +209,23 @@ def build_image(
                     raise docker.errors.BuildError(
                         chunk["errorDetail"]["message"], buildlog
                     )
+                elif "error" in chunk:
+                    # Some Docker versions return 'error' without 'errorDetail'
+                    error_msg = ansi_escape(str(chunk["error"]))
+                    logger.error(f"Error: {error_msg}")
+                    raise docker.errors.BuildError(error_msg, buildlog)
+
+        # Verify the image was actually created — the legacy builder can
+        # silently fail (e.g. Dockerfile parse errors) without raising an
+        # error through the response stream.
+        try:
+            client.images.get(image_name)
+        except docker.errors.ImageNotFound:
+            raise docker.errors.BuildError(
+                f"Image {image_name} not found after build completed. "
+                "The build may have silently failed (check the Dockerfile for syntax errors).",
+                buildlog,
+            )
         logger.info("Image built successfully!")
     except docker.errors.BuildError as e:
         logger.error(f"docker.errors.BuildError during {image_name}: {e}")
