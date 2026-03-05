@@ -40,17 +40,24 @@ _KAPT_MODULE_FLAGS = " ".join(
 # module-access flags.  This runs inside setup_repo.sh so it executes during
 # the *instance* image build — which is always freshly built — rather than
 # relying on a potentially stale/cached env image layer.
+# Memory notes: the Gradle daemon and Kotlin daemon each run as separate JVMs.
+# With both at -Xmx12g the combined footprint (~26 GB) easily exceeds typical
+# Docker container memory limits and the OOM killer terminates the daemon
+# ("Gradle build daemon disappeared unexpectedly").  6 GB each + 512 MB
+# metaspace keeps the combined ceiling around 14 GB, which fits most build
+# hosts while still being ample for KAPT / native / desugar workloads.
+# workers.max=2 reduces parallel task memory pressure further.
 GRADLE_PROPERTIES_SCRIPT = (
     'mkdir -p /root/.gradle && '
     'printf "%s\\n"'
-    ' "org.gradle.jvmargs=-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8 ' + _KAPT_MODULE_FLAGS + '"'
+    ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError ' + _KAPT_MODULE_FLAGS + '"'
     ' "org.gradle.java.installations.auto-detect=true"'
     ' "org.gradle.java.installations.auto-download=true"'
     ' "org.gradle.caching=true"'
     ' "org.gradle.parallel=true"'
-    ' "org.gradle.workers.max=8"'
+    ' "org.gradle.workers.max=2"'
     ' "org.gradle.vfs.watch=false"'
-    ' "kotlin.daemon.jvmargs=-Xmx8g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8 ' + _KAPT_MODULE_FLAGS + '"'
+    ' "kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError ' + _KAPT_MODULE_FLAGS + '"'
     ' > /root/.gradle/gradle.properties'
 )
 
@@ -165,8 +172,8 @@ SPECS_KOTLIN_ANDROID = {
         ],
         "install": ["chmod +x gradlew",
                     "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
-                    "./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
+                    "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
+        "test_cmd": ["chmod +x gradlew", "./gradlew test", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
@@ -185,8 +192,8 @@ SPECS_KOTLIN_ANDROID_21 = {
         ],
         "install": ["chmod +x gradlew",
                     "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
-                    "./gradlew assembleDebug --no-watch-fs -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test --no-watch-fs", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
+                    "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
+        "test_cmd": ["chmod +x gradlew", "./gradlew test", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
                      "cat /testbed/reports/junit/all-testsuites.xml"]}
 }
 
@@ -205,6 +212,9 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
         repo: SPECS_KOTLIN_ANDROID_21
         for repo in [
             "android/nowinandroid",
+            "MMRLApp/MMRL",
+            "NordicSemiconductor/Android-DFU-Library",
+            "Stypox/dicio-android",
             "thunderbird/thunderbird-android",
         ]
     },
@@ -214,18 +224,14 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "Aliucord/Aliucord",
             "AllanWang/Frost-for-Facebook",
             "AppIntro/AppIntro",
-            "DroidKaigi/conference-app-2023",
             "GetStream/whatsApp-clone-compose",
             "GrapheneOS/Camera",
             "IacobIonut01/Gallery",
             "LemmyNet/jerboa",
             "LibChecker/LibChecker",
-            "MMRLApp/MMRL",
             "Mahmud0808/ColorBlendr",
-            "NordicSemiconductor/Android-DFU-Library",
             "Pool-Of-Tears/GreenStash",
             "Pool-Of-Tears/Myne",
-            "Stypox/dicio-android",
             "T8RIN/ImageToolbox",
             "Tapadoo/Alerter",
             "TrianguloY/URLCheck",
@@ -263,6 +269,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
         repo: SPECS_KOTLIN_ANDROID_X86
         for repo in [
             "DroidKaigi/conference-app-2021",
+            "DroidKaigi/conference-app-2023",
             "Shabinder/SpotiFlyer",
             "kasem-sm/SlimeKT",
         ]

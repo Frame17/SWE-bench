@@ -45,6 +45,25 @@ RUN apt-get update && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
+# On ARM64 hosts, Android SDK build tools (aapt2, aidl, etc.) are x86-64-only
+# Linux ELFs.  Docker Desktop intercepts them via Rosetta/binfmt_misc emulation,
+# but fails immediately because the x86-64 dynamic linker is absent from the
+# container.  Adding the amd64 foreign architecture and installing libc6:amd64
+# provides /lib64/ld-linux-x86-64.so.2, which lets those binaries load and run.
+# On ARM64 Ubuntu the default apt sources (ports.ubuntu.com) only serve ARM
+# packages, so we must explicitly add archive.ubuntu.com for amd64 packages.
+RUN dpkg --add-architecture amd64 && \
+  sed -i 's|^deb http://ports\\.ubuntu\\.com|deb [arch=arm64] http://ports.ubuntu.com|g' /etc/apt/sources.list && \
+  printf 'deb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy main restricted universe\\ndeb [arch=amd64] http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe\\ndeb [arch=amd64] http://security.ubuntu.com/ubuntu jammy-security main restricted universe\\n' \
+    >> /etc/apt/sources.list && \
+  apt-get update && \
+  apt-get install -y --no-install-recommends \
+  libc6:amd64 \
+  libstdc++6:amd64 \
+  zlib1g:amd64 && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
+
 RUN update-ca-certificates
 
 # Install SDKMAN and latest Gradle version (9.3.1)
@@ -74,9 +93,9 @@ RUN mkdir -p ${{ANDROID_SDK_ROOT}}/cmdline-tools && \
 RUN yes | sdkmanager --licenses && \
   sdkmanager "platform-tools" \
   "platforms;android-30" "platforms;android-31" "platforms;android-32" \
-  "platforms;android-33" "platforms;android-34" "platforms;android-35" \
+  "platforms;android-33" "platforms;android-34" "platforms;android-35" "platforms;android-36" \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
-  "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0"
+  "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0" "build-tools;36.0.0"
 """
 
 _DOCKERFILE_INSTANCE_KOTLIN = r"""FROM --platform={platform} {env_image_name}
