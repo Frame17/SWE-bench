@@ -3,6 +3,7 @@ from __future__ import annotations
 import docker
 import json
 import platform
+import sys
 import threading
 import traceback
 
@@ -532,7 +533,12 @@ def main(
     # run instances locally
     if platform.system() == "Linux":
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-    client = docker.from_env()
+    try:
+        client = docker.from_env()
+        client.ping()
+    except docker.errors.DockerException:
+        print("Error: Docker is not running. Please start Docker and try again.")
+        sys.exit(1)
 
     existing_images = list_images(client)
     if not dataset:
@@ -623,7 +629,7 @@ if __name__ == "__main__":
         "-t",
         "--timeout",
         type=int,
-        default=1_800,
+        default=5_400, # default of 1800 is not enough time for wikimedia repo
         help="Timeout (in seconds) for running tests for each instance",
     )
     parser.add_argument(
