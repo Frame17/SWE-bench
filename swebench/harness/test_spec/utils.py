@@ -3,6 +3,7 @@ from swebench.harness.constants import (
     MAP_REPO_VERSION_TO_SPECS,
     START_TEST_OUTPUT,
 )
+from swebench.harness.repo_customization import get_customization_commands
 from swebench.harness.utils import get_modified_files
 
 
@@ -35,6 +36,7 @@ def make_repo_script_list_common(
     ]
     if "pre_install" in specs:
         setup_commands.extend(specs["pre_install"])
+    setup_commands.extend(get_customization_commands(repo))
     if "install" in specs:
         setup_commands.extend(specs["install"])
     if "build" in specs:

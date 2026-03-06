@@ -166,8 +166,6 @@ SPECS_KOTLIN_ANDROID = {
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
-            "mkdir -p app/ && echo '{}' > app/google-services.json",
-            "mkdir -p core/settings/ && echo '{}' > core/settings/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
         "install": ["chmod +x gradlew",
@@ -187,7 +185,6 @@ SPECS_KOTLIN_ANDROID_21 = {
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
-            "mkdir -p app/ && echo '{}' > app/google-services.json",
             "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
         "install": ["chmod +x gradlew",
