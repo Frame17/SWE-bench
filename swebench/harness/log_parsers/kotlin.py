@@ -164,6 +164,7 @@ MAP_REPO_TO_PARSER_KOTLIN = {
         "patzly/grocy-android",
         "recloudstream/cloudstream",
         "spacecowboy/Feeder",
+        "thunderbird/thunderbird-android",
         "wikimedia/apps-android-wikipedia",
         "you-apps/ClockYou",
         "you-apps/RecordYou"
