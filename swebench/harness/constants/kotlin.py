@@ -208,11 +208,13 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
     **{
         repo: SPECS_KOTLIN_ANDROID_21
         for repo in [
+            "T8RIN/ImageToolbox",
             "android/nowinandroid",
             "MMRLApp/MMRL",
             "NordicSemiconductor/Android-DFU-Library",
             "Stypox/dicio-android",
             "jarnedemeulemeester/findroid",
+            "nextcloud/android",
             "thunderbird/thunderbird-android",
         ]
     },
@@ -230,7 +232,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "Mahmud0808/ColorBlendr",
             "Pool-Of-Tears/GreenStash",
             "Pool-Of-Tears/Myne",
-            "T8RIN/ImageToolbox",
             "Tapadoo/Alerter",
             "TrianguloY/URLCheck",
             "android/socialite",
@@ -247,7 +248,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "keymapperorg/KeyMapper",
             "kylecorry31/Trail-Sense",
             "leonlatsch/Photok",
-            "nextcloud/android",
             "nextcloud/notes-android",
             "owncloud/android",
             "oxygen-updater/oxygen-updater",
