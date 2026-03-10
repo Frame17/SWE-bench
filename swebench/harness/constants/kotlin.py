@@ -213,6 +213,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "MMRLApp/MMRL",
             "NordicSemiconductor/Android-DFU-Library",
             "Stypox/dicio-android",
+            "jarnedemeulemeester/findroid",
             "nextcloud/android",
             "thunderbird/thunderbird-android",
         ]
@@ -244,7 +245,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "getodk/collect",
             "iSoron/uhabits",
             "jaredsburrows/android-gradle-java-app-template",
-            "jarnedemeulemeester/findroid",
             "keymapperorg/KeyMapper",
             "kylecorry31/Trail-Sense",
             "leonlatsch/Photok",
