@@ -141,6 +141,7 @@ MAP_REPO_TO_PARSER_KOTLIN = {
         "T8RIN/ImageToolbox",
         "Tapadoo/Alerter",
         "TrianguloY/URLCheck",
+        "android/nowinandroid",
         "android/socialite",
         "android/sunflower",
         "android/uamp",
