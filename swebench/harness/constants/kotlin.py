@@ -209,7 +209,6 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
         repo: SPECS_KOTLIN_ANDROID_21
         for repo in [
             "T8RIN/ImageToolbox",
-            "android/nowinandroid",
             "MMRLApp/MMRL",
             "NordicSemiconductor/Android-DFU-Library",
             "Stypox/dicio-android",
@@ -234,6 +233,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "Pool-Of-Tears/Myne",
             "Tapadoo/Alerter",
             "TrianguloY/URLCheck",
+            "android/nowinandroid",
             "android/socialite",
             "android/sunflower",
             "android/uamp",
