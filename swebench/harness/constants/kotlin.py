@@ -166,7 +166,7 @@ SPECS_KOTLIN_ANDROID = {
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
-            "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
+            "rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
         "install": ["chmod +x gradlew",
                     "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
@@ -185,7 +185,7 @@ SPECS_KOTLIN_ANDROID_21 = {
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
-            "keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
+            "rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
         ],
         "install": ["chmod +x gradlew",
                     "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
