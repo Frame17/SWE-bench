@@ -79,7 +79,7 @@ def remove_image(client, image_id, logger=None):
         # if logger is "quiet", don't print anything
         log_info = lambda x: None
         log_error = lambda x: None
-        raise_error = True
+        raise_error = False
     else:
         # if logger is a logger object, use it
         log_error = logger.info
@@ -89,7 +89,7 @@ def remove_image(client, image_id, logger=None):
         log_info(f"Attempting to remove image {image_id}...")
         client.images.remove(image_id, force=True)
         log_info(f"Image {image_id} removed.")
-    except docker.errors.ImageNotFound:
+    except (docker.errors.ImageNotFound, docker.errors.NotFound):
         log_info(f"Image {image_id} not found, removing has no effect.")
     except Exception as e:
         if raise_error:

@@ -43,6 +43,7 @@ class TestSpec:
     language: str
     docker_specs: dict
     namespace: Optional[str]
+    gradle_distribution_url: Optional[str] = None
     base_image_tag: str = LATEST
     env_image_tag: str = LATEST
     instance_image_tag: str = LATEST
@@ -242,4 +243,5 @@ def make_test_spec(
         base_image_tag=base_image_tag,
         env_image_tag=env_image_tag,
         instance_image_tag=instance_image_tag,
+        gradle_distribution_url=instance.get("gradle_distribution_url"),
     )
