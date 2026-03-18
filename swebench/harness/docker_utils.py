@@ -79,7 +79,7 @@ def remove_image(client, image_id, logger=None):
         # if logger is "quiet", don't print anything
         log_info = lambda x: None
         log_error = lambda x: None
-        raise_error = False
+        raise_error = True
     else:
         # if logger is a logger object, use it
         log_error = logger.info
