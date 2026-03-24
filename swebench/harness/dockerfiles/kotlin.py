@@ -101,6 +101,7 @@ RUN yes | sdkmanager --licenses && \
   "platforms;android-33" "platforms;android-34" "platforms;android-35" "platforms;android-36" \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
   "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0" "build-tools;36.0.0"
+
 """
 
 def make_gradle_warmup_script(distribution_urls: list[str]) -> str:
@@ -134,6 +135,78 @@ def make_gradle_warmup_script(distribution_urls: list[str]) -> str:
         "rm -rf /tmp/gradle-warmup",
     ]
     return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Dependency pre-fetch via Gradle init scripts.
+#
+# Instead of maintaining a static list of dependencies, we inject an init
+# script into the real project that registers a "resolveAllDependencies" task
+# in every (sub)project.  Running it after the repo is cloned populates the
+# Gradle cache with the exact artifacts the project needs.
+#
+# Two variants are provided because the isolated-projects-compatible API
+# (gradle.lifecycle.afterProject) only exists in Gradle >= 8.8.
+# ---------------------------------------------------------------------------
+
+# For Gradle >= 8.8: uses the IsolatedAction-based lifecycle hook.
+_RESOLVE_DEPS_INIT_GRADLE_MODERN = """\
+gradle.lifecycle.afterProject {
+    tasks.register("resolveAllDependencies") {
+        doLast {
+            configurations.matching { it.isCanBeResolved() }.each { config ->
+                try {
+                    config.resolve()
+                } catch (Exception e) {
+                    logger.warn("Could not resolve ${config.name}: ${e.message}")
+                }
+            }
+        }
+    }
+}
+"""
+
+# For Gradle < 8.8: uses allprojects + afterEvaluate (not isolated-projects safe).
+_RESOLVE_DEPS_INIT_GRADLE_LEGACY = """\
+allprojects {
+    afterEvaluate {
+        tasks.register("resolveAllDependencies") {
+            doLast {
+                configurations.findAll { it.canBeResolved }.each { config ->
+                    try {
+                        config.resolve()
+                    } catch (Exception e) {
+                        println("WARN: could not resolve ${config.name}: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+_GRADLE_8_8 = (8, 8)
+
+
+def _parse_gradle_version(distribution_url: str) -> tuple[int, ...]:
+    """Extract the Gradle version tuple from a distribution URL.
+
+    >>> _parse_gradle_version("https://.../gradle-8.11.1-bin.zip")
+    (8, 11, 1)
+    """
+    import re
+    m = re.search(r"gradle-(\d+(?:\.\d+)*)-", distribution_url)
+    if not m:
+        return (0,)
+    return tuple(int(x) for x in m.group(1).split("."))
+
+
+def get_resolve_deps_init_script(distribution_url: str) -> str:
+    """Return the appropriate init script content for the given Gradle version."""
+    version = _parse_gradle_version(distribution_url)
+    if version >= _GRADLE_8_8:
+        return _RESOLVE_DEPS_INIT_GRADLE_MODERN
+    return _RESOLVE_DEPS_INIT_GRADLE_LEGACY
 
 
 _DOCKERFILE_INSTANCE_KOTLIN = r"""FROM --platform={platform} {env_image_name}

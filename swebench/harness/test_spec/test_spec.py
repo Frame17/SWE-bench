@@ -223,6 +223,24 @@ def make_test_spec(
     repo_script_list = make_repo_script_list(
         specs, repo, repo_directory, base_commit, env_name
     )
+
+    # For Kotlin repos, inject a dependency pre-fetch step that resolves all
+    # configurations using a version-appropriate init script.  This runs after
+    # the repo is cloned and pre_install is done but before the real build,
+    # populating /root/.gradle/caches/ with the project's exact dependencies.
+    gradle_distribution_url = instance.get("gradle_distribution_url")
+    if MAP_REPO_TO_EXT[repo] == "kotlin" and gradle_distribution_url:
+        from swebench.harness.dockerfiles.kotlin import get_resolve_deps_init_script
+        init_script_content = get_resolve_deps_init_script(gradle_distribution_url)
+        repo_script_list += [
+            # Write the init script
+            f"cat > /root/resolve_deps.gradle << 'RESOLVE_DEPS_EOF'\n{init_script_content}RESOLVE_DEPS_EOF",
+            # Resolve all dependencies (failures are non-fatal)
+            f"cd {repo_directory}",
+            "chmod +x gradlew",
+            "./gradlew --no-daemon --init-script /root/resolve_deps.gradle resolveAllDependencies || true",
+        ]
+
     env_script_list = make_env_script_list(instance, specs, env_name)
     eval_script_list = make_eval_script_list(
         instance, specs, env_name, repo_directory, base_commit, test_patch
