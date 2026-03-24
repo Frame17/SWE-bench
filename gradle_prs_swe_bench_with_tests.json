@@ -12,7 +12,8 @@
     "test_patch": "",
     "created_at": "2025-02-22T03:11:55Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.6.1-bin.zip"
   },
   {
     "instance_id": "AllanWang__Frost-for-Facebook-1951",
@@ -29,7 +30,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.0-bin.zip"
   },
   {
     "instance_id": "AppIntro__AppIntro-1322",
@@ -58,7 +60,8 @@
       "com.github.appintro.model.SliderPageTest.sliderPage_titleString_worksAfterReassignment",
       "com.github.appintro.model.SliderPageTest.sliderPage_valuesAreDefaulting",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
   },
   {
     "instance_id": "DroidKaigi__conference-app-2021-762",
@@ -73,7 +76,8 @@
     "test_patch": "",
     "created_at": "2022-01-13T15:37:24Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.2-bin.zip"
   },
   {
     "instance_id": "DroidKaigi__conference-app-2023-1224",
@@ -306,7 +310,8 @@
       "io.github.droidkaigi.confsched2023.sessions.TimetableScreenTest.checkScrollShot",
       "io.github.droidkaigi.confsched2023.sessions.TimetableScreenTest.checkSmallFontScaleShot",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.3-bin.zip"
   },
   {
     "instance_id": "GetStream__whatsApp-clone-compose-238",
@@ -323,7 +328,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-bin.zip"
   },
   {
     "instance_id": "GrapheneOS__Camera-583",
@@ -340,7 +346,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
   },
   {
     "instance_id": "IacobIonut01__Gallery-651",
@@ -358,7 +365,8 @@
     "PASS_TO_PASS": [
       "com.dot.gallery.ExampleUnitTest.addition_isCorrect",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.12.1-bin.zip"
   },
   {
     "instance_id": "LemmyNet__jerboa-2078",
@@ -450,7 +458,8 @@
       "com.jerboa.util.markwon.ScriptRewriteSupportPluginTest.should rewrite lemmy script to markwon script(~~text~~, ~~text~~) [11]",
       "com.jerboa.util.markwon.ScriptRewriteSupportPluginTest.should rewrite lemmy script to markwon script(~~~, ~~~) [20]",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
   },
   {
     "instance_id": "LibChecker__LibChecker-1915",
@@ -465,7 +474,8 @@
     "test_patch": "",
     "created_at": "2026-01-25T15:55:22Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.0-bin.zip"
   },
   {
     "instance_id": "MMRLApp__MMRL-542",
@@ -480,7 +490,8 @@
     "test_patch": "",
     "created_at": "2025-09-27T11:59:45Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.12-bin.zip"
   },
   {
     "instance_id": "Mahmud0808__ColorBlendr-273",
@@ -500,7 +511,8 @@
       "io.github.muntashirakon.adb.AndroidPubkeyTest.encodeTest",
       "io.github.muntashirakon.adb.AndroidPubkeyTest.encodeWithNameTest",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.13-bin.zip"
   },
   {
     "instance_id": "NordicSemiconductor__Android-DFU-Library-516",
@@ -515,7 +527,8 @@
     "test_patch": "",
     "created_at": "2026-02-11T11:32:14Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
   },
   {
     "instance_id": "Pool-Of-Tears__GreenStash-211",
@@ -533,7 +546,8 @@
     "PASS_TO_PASS": [
       "com.starry.greenstash.ExampleUnitTest.addition_isCorrect",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.14.3-bin.zip"
   },
   {
     "instance_id": "Pool-Of-Tears__Myne-277",
@@ -550,7 +564,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
   },
   {
     "instance_id": "Shabinder__SpotiFlyer-1385",
@@ -565,7 +580,8 @@
     "test_patch": "",
     "created_at": "2022-05-24T21:48:40Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.3.3-bin.zip"
   },
   {
     "instance_id": "Stypox__dicio-android-331",
@@ -580,7 +596,8 @@
     "test_patch": "",
     "created_at": "2025-08-01T19:09:46Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.12.1-bin.zip"
   },
   {
     "instance_id": "T8RIN__ImageToolbox-2528",
@@ -595,7 +612,8 @@
     "test_patch": "",
     "created_at": "2026-02-17T22:54:16Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.13-bin.zip"
   },
   {
     "instance_id": "Tapadoo__Alerter-273",
@@ -610,7 +628,8 @@
     "test_patch": "",
     "created_at": "2021-08-12T02:57:36Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-6.8.3-bin.zip"
   },
   {
     "instance_id": "TrianguloY__URLCheck-476",
@@ -627,7 +646,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-bin.zip"
   },
   {
     "instance_id": "android__nowinandroid-836",
@@ -642,7 +662,8 @@
     "test_patch": "",
     "created_at": "2023-07-13T10:58:08Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.2-bin.zip"
   },
   {
     "instance_id": "android__socialite-107",
@@ -659,7 +680,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.9-bin.zip"
   },
   {
     "instance_id": "android__sunflower-976",
@@ -685,7 +707,8 @@
       "com.google.samples.apps.sunflower.utilities.GrowZoneUtilTest.getZoneForLatitude_GitHub_issue8",
       "com.google.samples.apps.sunflower.utilities.GrowZoneUtilTest.getZoneForLatitude_negativeLatitudes",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-bin.zip"
   },
   {
     "instance_id": "android__uamp-540",
@@ -709,7 +732,8 @@
       "com.example.android.uamp.media.library.MusicSourceTest.whenReady_errorContinues",
       "com.example.android.uamp.media.library.MusicSourceTest.whenReady_waits",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.2.1-bin.zip"
   },
   {
     "instance_id": "aniyomiorg__aniyomi-2178",
@@ -803,7 +827,8 @@
       "tachiyomi.domain.release.interactor.GetApplicationReleaseTest.When has update but is preview expect new update()",
       "tachiyomi.domain.release.interactor.GetApplicationReleaseTest.When has update expect new update()",
       "tachiyomi.domain.release.interactor.GetApplicationReleaseTest.When now is before three days expect no new update()"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.13-bin.zip"
   },
   {
     "instance_id": "avluis__Hentoid-1210",
@@ -818,7 +843,8 @@
     "test_patch": "",
     "created_at": "2025-01-06T15:42:43Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.9-bin.zip"
   },
   {
     "instance_id": "beemdevelopment__Aegis-1649",
@@ -833,7 +859,8 @@
     "test_patch": "",
     "created_at": "2025-05-23T12:02:43Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.9-bin.zip"
   },
   {
     "instance_id": "d4rken-org__capod-379",
@@ -848,7 +875,8 @@
     "test_patch": "",
     "created_at": "2026-02-08T16:05:43Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.14-bin.zip"
   },
   {
     "instance_id": "flipperdevices__Flipper-Android-App-1034",
@@ -863,7 +891,8 @@
     "test_patch": "",
     "created_at": "2025-07-01T19:48:06Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-bin.zip"
   },
   {
     "instance_id": "getodk__collect-7009",
@@ -878,7 +907,8 @@
     "test_patch": "",
     "created_at": "2025-12-30T15:29:04Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.0.0-bin.zip"
   },
   {
     "instance_id": "iSoron__uhabits-2209",
@@ -900,7 +930,8 @@
       "org.isoron.uhabits.receivers.ReminderControllerTest.testOnDismiss",
       "org.isoron.uhabits.receivers.ReminderControllerTest.testOnShowReminder",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-bin.zip"
   },
   {
     "instance_id": "jaredsburrows__android-gradle-java-app-template-66",
@@ -924,7 +955,8 @@
       "burrows.apps.example.template.util.PlayServicesUtilsTest.testServiceVersionUpdateRequired",
       "burrows.apps.example.template.util.PlayServicesUtilsTest.testSuccess",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-bin.zip"
   },
   {
     "instance_id": "jarnedemeulemeester__findroid-1154",
@@ -939,7 +971,8 @@
     "test_patch": "",
     "created_at": "2026-02-14T11:23:58Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
   },
   {
     "instance_id": "kasem-sm__SlimeKT-184",
@@ -954,7 +987,8 @@
     "test_patch": "",
     "created_at": "2022-07-29T05:40:01Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.3.3-bin.zip"
   },
   {
     "instance_id": "keymapperorg__KeyMapper-2013",
@@ -969,7 +1003,8 @@
     "test_patch": "",
     "created_at": "2026-02-04T09:24:18Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.13-bin.zip"
   },
   {
     "instance_id": "kylecorry31__Trail-Sense-3466",
@@ -1364,7 +1399,8 @@
       "com.kylecorrytrail_sense.tools.paths.domain.pathsort.ShortestPathSortStrategyTest.sort()",
       "com.kylecorrytrail_sense.tools.paths.domain.point_finder.NearestPathPointNavigatorTest.getNextPoint()",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
   },
   {
     "instance_id": "leonlatsch__Photok-609",
@@ -1381,7 +1417,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.13-bin.zip"
   },
   {
     "instance_id": "nextcloud__android-16541",
@@ -1396,7 +1433,8 @@
     "test_patch": "",
     "created_at": "2026-02-18T11:03:35Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
   },
   {
     "instance_id": "nextcloud__notes-android-3062",
@@ -1413,7 +1451,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
   },
   {
     "instance_id": "owncloud__android-4708",
@@ -1428,7 +1467,8 @@
     "test_patch": "",
     "created_at": "2025-11-05T08:23:55Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.9-bin.zip"
   },
   {
     "instance_id": "oxygen-updater__oxygen-updater-243",
@@ -1443,7 +1483,8 @@
     "test_patch": "",
     "created_at": "2023-11-21T09:09:51Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.1.1-bin.zip"
   },
   {
     "instance_id": "patzly__grocy-android-940",
@@ -1460,7 +1501,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.13-bin.zip"
   },
   {
     "instance_id": "recloudstream__cloudstream-2342",
@@ -1477,7 +1519,8 @@
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
   },
   {
     "instance_id": "spacecowboy__Feeder-964",
@@ -1702,7 +1745,8 @@
       "com.nononsenseapps.text.HtmlToPlainTextConverterTest.repeated",
       "com.nononsenseapps.text.HtmlToPlainTextConverterTest.unorderedList",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
   },
   {
     "instance_id": "thunderbird__thunderbird-android-10522",
@@ -4731,7 +4775,8 @@
       "net.thunderbird.quality.ValidateLogger.no class should use Java util logging",
       "net.thunderbird.quality.ValidateLogger.no class should use Timber logging",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.2.1-bin.zip"
   },
   {
     "instance_id": "wikimedia__apps-android-wikipedia-6316",
@@ -4746,7 +4791,8 @@
     "test_patch": "",
     "created_at": "2026-02-13T17:15:46Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
   },
   {
     "instance_id": "you-apps__ClockYou-332",
@@ -4764,7 +4810,8 @@
     "PASS_TO_PASS": [
       "com.bnyro.clock.ExampleUnitTest.addition_isCorrect",
       "static_verification"
-    ]
+    ],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-bin.zip"
   },
   {
     "instance_id": "you-apps__RecordYou-259",
@@ -4779,6 +4826,7 @@
     "test_patch": "",
     "created_at": "2024-02-18T11:11:30Z",
     "FAIL_TO_PASS": [],
-    "PASS_TO_PASS": []
+    "PASS_TO_PASS": [],
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.5-bin.zip"
   }
 ]
