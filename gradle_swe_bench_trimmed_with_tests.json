@@ -17,7 +17,7 @@
     "PASS_TO_PASS": [
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.0-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.0-bin.zip"
   },
   {
     "instance_id": "AppIntro__AppIntro-1322",
@@ -264,7 +264,7 @@
     "PASS_TO_PASS": [
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-bin.zip"
   },
   {
     "instance_id": "android__socialite-107",
@@ -396,7 +396,7 @@
     "PASS_TO_PASS": [
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-bin.zip"
   },
   {
     "instance_id": "kylecorry31__Trail-Sense-3466",
@@ -542,6 +542,6 @@
     "PASS_TO_PASS": [
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.2.1-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.2.1-bin.zip"
   }
 ]

@@ -31,7 +31,7 @@
     "PASS_TO_PASS": [
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.0-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.0-bin.zip"
   },
   {
     "instance_id": "AppIntro__AppIntro-1322",
@@ -77,7 +77,7 @@
     "created_at": "2022-01-13T15:37:24Z",
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.2-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-7.2-bin.zip"
   },
   {
     "instance_id": "DroidKaigi__conference-app-2023-1224",
@@ -629,7 +629,7 @@
     "created_at": "2021-08-12T02:57:36Z",
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-6.8.3-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-6.8.3-bin.zip"
   },
   {
     "instance_id": "TrianguloY__URLCheck-476",
@@ -647,7 +647,7 @@
     "PASS_TO_PASS": [
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-bin.zip"
   },
   {
     "instance_id": "android__nowinandroid-836",
@@ -892,7 +892,7 @@
     "created_at": "2025-07-01T19:48:06Z",
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.11.1-bin.zip"
   },
   {
     "instance_id": "getodk__collect-7009",
@@ -908,7 +908,7 @@
     "created_at": "2025-12-30T15:29:04Z",
     "FAIL_TO_PASS": [],
     "PASS_TO_PASS": [],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.0.0-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.0.0-bin.zip"
   },
   {
     "instance_id": "iSoron__uhabits-2209",
@@ -956,7 +956,7 @@
       "burrows.apps.example.template.util.PlayServicesUtilsTest.testSuccess",
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.6-bin.zip"
   },
   {
     "instance_id": "jarnedemeulemeester__findroid-1154",
@@ -4776,7 +4776,7 @@
       "net.thunderbird.quality.ValidateLogger.no class should use Timber logging",
       "static_verification"
     ],
-    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.2.1-all.zip"
+    "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-9.2.1-bin.zip"
   },
   {
     "instance_id": "wikimedia__apps-android-wikipedia-6316",
