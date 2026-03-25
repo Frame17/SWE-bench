@@ -14,6 +14,7 @@ from swebench.harness.constants import (
     BASE_IMAGE_BUILD_DIR,
     DOCKER_USER,
     ENV_IMAGE_BUILD_DIR,
+    GRADLE_CACHE_DIR,
     INSTANCE_IMAGE_BUILD_DIR,
     UTF8,
 )
@@ -104,6 +105,7 @@ def build_image(
     client: docker.DockerClient,
     build_dir: Path,
     nocache: bool = False,
+    volumes: list[str] | None = None,
 ):
     """
     Builds a docker image with the given name, setup scripts, dockerfile, and platform.
@@ -116,6 +118,7 @@ def build_image(
         client (docker.DockerClient): Docker client to use for building the image
         build_dir (Path): Directory for the build context (will also contain logs, scripts, and artifacts)
         nocache (bool): Whether to use the cache when building
+        volumes (list[str]): Volume mounts for the build (e.g. ["/host/path:/container/path"])
     """
     # Create a logger for the build process
     logger = setup_logger(image_name, build_dir / "build_image.log")
@@ -148,25 +151,28 @@ def build_image(
             f"Building docker image {image_name} in {build_dir} with platform {platform}"
         )
 
-        if _is_cross_platform_build(platform):
-            # The Docker SDK's legacy builder (client.api.build) cannot
-            # resolve locally-built images when the target platform differs
-            # from the host architecture.  Use ``docker buildx build --load``
-            # instead, which uses BuildKit and handles this correctly.
-            logger.info(
-                f"Cross-platform build detected (target={platform}). "
-                "Using 'docker buildx build --load'."
-            )
-            cmd = [
-                "docker", "buildx", "build",
-                "--platform", platform,
-                "--load",
-                "--tag", image_name,
-            ]
+        use_cli = _is_cross_platform_build(platform) or volumes
+        if use_cli:
+            # Shell out to the CLI when we need features the Python SDK
+            # doesn't support: cross-platform builds or volume mounts.
+            import shutil
+            docker_cmd = shutil.which("docker") or shutil.which("podman") or "docker"
+            if _is_cross_platform_build(platform):
+                cmd = [
+                    docker_cmd, "buildx", "build",
+                    "--platform", platform,
+                    "--load",
+                    "--tag", image_name,
+                ]
+            else:
+                cmd = [docker_cmd, "build", "--tag", image_name]
+            for vol in (volumes or []):
+                cmd.extend(["-v", vol])
             if nocache:
                 cmd.append("--no-cache")
             cmd.append(str(build_dir))
 
+            logger.info(f"Running: {' '.join(cmd)}")
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -181,7 +187,7 @@ def build_image(
             process.wait()
             if process.returncode != 0:
                 raise docker.errors.BuildError(
-                    f"docker buildx build exited with code {process.returncode}",
+                    f"docker build exited with code {process.returncode}",
                     buildlog,
                 )
         else:
@@ -525,6 +531,16 @@ def build_instance_image(
     except docker.errors.ImageNotFound:
         pass
 
+    # Mount a per-repo persistent Gradle home for Kotlin/Java builds so that
+    # dependencies, transforms, and generated JARs are cached across instances
+    # of the same repo. Per-repo isolation avoids cross-project conflicts
+    # (different Kotlin/AGP versions produce incompatible cached artifacts).
+    build_volumes = None
+    if test_spec.language in ("kotlin", "java"):
+        repo_cache = GRADLE_CACHE_DIR.resolve() / test_spec.repo.replace("/", "__")
+        repo_cache.mkdir(parents=True, exist_ok=True)
+        build_volumes = [f"{repo_cache}:/root/.gradle"]
+
     # Build the instance image
     if not image_exists:
         build_image(
@@ -537,6 +553,7 @@ def build_instance_image(
             client=client,
             build_dir=build_dir,
             nocache=nocache,
+            volumes=build_volumes,
         )
     else:
         logger.info(f"Image {image_name} already exists, skipping build.")
@@ -591,6 +608,13 @@ def build_container(
         run_args = test_spec.docker_specs.get("run_args", {})
         cap_add = run_args.get("cap_add", [])
 
+        # Mount per-repo persistent Gradle home for Kotlin/Java projects
+        volumes = {}
+        if test_spec.language in ("kotlin", "java"):
+            repo_cache = GRADLE_CACHE_DIR.resolve() / test_spec.repo.replace("/", "__")
+            repo_cache.mkdir(parents=True, exist_ok=True)
+            volumes[str(repo_cache)] = {"bind": "/root/.gradle", "mode": "rw"}
+
         container = client.containers.create(
             image=test_spec.instance_image_key,
             name=test_spec.get_instance_container_name(run_id),
@@ -599,6 +623,7 @@ def build_container(
             command="tail -f /dev/null",
             platform=test_spec.platform,
             cap_add=cap_add,
+            volumes=volumes,
         )
         logger.info(f"Container for {test_spec.instance_id} created: {container.id}")
         return container

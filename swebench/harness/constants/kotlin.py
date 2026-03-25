@@ -47,7 +47,8 @@ _KAPT_MODULE_FLAGS = " ".join(
 # metaspace keeps the combined ceiling around 14 GB, which fits most build
 # hosts while still being ample for KAPT / native / desugar workloads.
 # workers.max=2 reduces parallel task memory pressure further.
-GRADLE_PROPERTIES_SCRIPT = (
+GRADLE_PRE_RUN_SCRIPT = (
+    'rm -rf /root/.gradle/daemon && '
     'mkdir -p /root/.gradle && '
     'printf "%s\\n"'
     ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError ' + _KAPT_MODULE_FLAGS + '"'
@@ -160,7 +161,7 @@ SPECS_KOTLIN_ANDROID = {
     "1.0.0": {
         "docker_specs": {"java_version": "17"},
         "pre_install": [
-            GRADLE_PROPERTIES_SCRIPT,
+            GRADLE_PRE_RUN_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
@@ -179,7 +180,7 @@ SPECS_KOTLIN_ANDROID_21 = {
     "1.0.0": {
         "docker_specs": {"java_version": "21"},
         "pre_install": [
-            GRADLE_PROPERTIES_SCRIPT,
+            GRADLE_PRE_RUN_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
