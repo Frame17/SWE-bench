@@ -301,7 +301,7 @@ def run_instances(
         run_id (str): Run ID
         timeout (int): Timeout for running tests
     """
-    client = docker.from_env()
+    client = docker.from_env(timeout=120)
     test_specs = list(
         map(
             lambda instance: make_test_spec(
@@ -534,7 +534,7 @@ def main(
     if platform.system() == "Linux":
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     try:
-        client = docker.from_env()
+        client = docker.from_env(timeout=120)
         client.ping()
     except docker.errors.DockerException:
         print("Error: Docker is not running. Please start Docker and try again.")
@@ -629,7 +629,7 @@ if __name__ == "__main__":
         "-t",
         "--timeout",
         type=int,
-        default=5_400, # default of 1800 is not enough time for wikimedia repo
+        default=5_400,  # default of 1800 is not enough time for wikimedia repo
         help="Timeout (in seconds) for running tests for each instance",
     )
     parser.add_argument(
