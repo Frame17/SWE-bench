@@ -237,6 +237,30 @@ def build_image(
         close_logger(logger)  # functions that create loggers should close them
 
 
+def _collect_gradle_warmup(test_specs: list[TestSpec]) -> str:
+    """
+    For all Kotlin TestSpecs that have gradle_distribution_url:
+      - injects a stable cache-bust key into docker_specs (so base_image_key hash
+        changes when the URL set changes — must be called before first key access)
+      - returns the shell script content to pass as setup_scripts["gradle_warmup.sh"]
+
+    Returns a no-op script if no Kotlin specs have a distribution URL.
+    """
+    from swebench.harness.dockerfiles.kotlin import make_gradle_warmup_script
+
+    urls = sorted({
+        s.gradle_distribution_url
+        for s in test_specs
+        if s.language == "kotlin" and s.gradle_distribution_url
+    })
+    script = make_gradle_warmup_script(urls) if urls else "#!/bin/bash\nexit 0\n"
+    cache_key = " ".join(urls)  # changes when URL set changes → invalidates base_image_key
+    for spec in test_specs:
+        if spec.language == "kotlin":
+            spec.docker_specs["gradle_warmup_urls"] = cache_key
+    return script
+
+
 def build_base_images(
     client: docker.DockerClient,
     dataset: list,
@@ -260,12 +284,13 @@ def build_base_images(
         instance_image_tag=instance_image_tag,
         env_image_tag=env_image_tag,
     )
+    warmup_script = _collect_gradle_warmup(test_specs)  # mutates docker_specs, must run before first key access
     base_images = {
-        x.base_image_key: (x.base_dockerfile, x.platform) for x in test_specs
+        x.base_image_key: (x.base_dockerfile, x.platform, x.language) for x in test_specs
     }
 
     # Build the base images
-    for image_name, (dockerfile, platform) in base_images.items():
+    for image_name, (dockerfile, platform, language) in base_images.items():
         try:
             # Check if the base image already exists
             client.images.get(image_name)
@@ -279,9 +304,10 @@ def build_base_images(
             pass
         # Build the base image (if it does not exist or force rebuild is enabled)
         print(f"Building base image ({image_name})")
+        scripts = {"gradle_warmup.sh": warmup_script} if language == "kotlin" else {}
         build_image(
             image_name=image_name,
-            setup_scripts={},
+            setup_scripts=scripts,
             dockerfile=dockerfile,
             platform=platform,
             client=client,
@@ -313,6 +339,7 @@ def get_env_configs_to_build(
         instance_image_tag=instance_image_tag,
         env_image_tag=env_image_tag,
     )
+    _collect_gradle_warmup(test_specs)  # mutates docker_specs before any key access
 
     for test_spec in test_specs:
         # Check if the base image exists
@@ -341,6 +368,7 @@ def get_env_configs_to_build(
                 "setup_script": test_spec.setup_env_script,
                 "dockerfile": test_spec.env_dockerfile,
                 "platform": test_spec.platform,
+                "language": test_spec.language,
             }
     return image_scripts
 
@@ -364,35 +392,37 @@ def build_env_images(
         max_workers (int): Maximum number of workers to use for building images
     """
     # Get the environment images to build from the dataset
+    test_specs = get_test_specs_from_dataset(
+        dataset,
+        namespace=namespace,
+        instance_image_tag=instance_image_tag,
+        env_image_tag=env_image_tag,
+    )
+    _collect_gradle_warmup(test_specs)  # mutates docker_specs before any key access
     if force_rebuild:
-        env_image_keys = {
-            x.env_image_key
-            for x in get_test_specs_from_dataset(
-                dataset,
-                namespace=namespace,
-                instance_image_tag=instance_image_tag,
-                env_image_tag=env_image_tag,
-            )
-        }
-        for key in env_image_keys:
+        for key in {x.env_image_key for x in test_specs}:
             remove_image(client, key, "quiet")
     build_base_images(
-        client, dataset, force_rebuild, namespace, instance_image_tag, env_image_tag
+        client, test_specs, force_rebuild, namespace, instance_image_tag, env_image_tag
     )
     configs_to_build = get_env_configs_to_build(
-        client, dataset, namespace, instance_image_tag, env_image_tag
+        client, test_specs, namespace, instance_image_tag, env_image_tag
     )
     if len(configs_to_build) == 0:
         print("No environment images need to be built.")
         return [], []
     print(f"Total environment images to build: {len(configs_to_build)}")
 
+    warmup_script = _collect_gradle_warmup(test_specs)
     args_list = list()
     for image_name, config in configs_to_build.items():
+        scripts = {"setup_env.sh": config["setup_script"]}
+        if config.get("language") == "kotlin":
+            scripts["gradle_warmup.sh"] = warmup_script
         args_list.append(
             (
                 image_name,
-                {"setup_env.sh": config["setup_script"]},
+                scripts,
                 config["dockerfile"],
                 config["platform"],
                 client,
