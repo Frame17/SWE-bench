@@ -370,6 +370,10 @@ def run_instances(
 
     run_threadpool(run_evaluation_with_progress, payloads, max_workers)
     print("All instances run.")
+    try:
+        client.close()
+    except ValueError:
+        pass
 
 
 def get_dataset_from_preds(
@@ -572,7 +576,7 @@ def main(
 
     # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
-    return make_run_report(
+    report = make_run_report(
         predictions,
         full_dataset,
         run_id,
@@ -581,6 +585,11 @@ def main(
         instance_image_tag,
         env_image_tag,
     )
+    try:
+        client.close()
+    except ValueError:
+        pass
+    return report
 
 
 if __name__ == "__main__":
