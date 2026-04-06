@@ -178,3 +178,4 @@ inputs/
 outputs/
 
 .github/copilot-instructions.md
+gradle-bench/data/
