@@ -73,6 +73,11 @@ RUN bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
     sdk install gradle 9.3.1 && \
     sdk default gradle 9.3.1"
 
+# Pre-warm Gradle wrapper distributions referenced in the dataset.
+# The script is generated from gradle_distribution_url fields in the dataset.
+COPY ./gradle_warmup.sh /tmp/gradle_warmup.sh
+RUN bash /tmp/gradle_warmup.sh && rm -f /tmp/gradle_warmup.sh
+
 ENV GRADLE_USER_HOME=/root/.gradle
 
 RUN $JAVA_HOME/bin/keytool -importkeystore -noprompt -trustcacerts \
@@ -97,6 +102,39 @@ RUN yes | sdkmanager --licenses && \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
   "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0" "build-tools;36.0.0"
 """
+
+def make_gradle_warmup_script(distribution_urls: list[str]) -> str:
+    """
+    Returns the content of a shell script that pre-warms each Gradle distribution by:
+      1. Creating a minimal Gradle project in /tmp/gradle-warmup
+      2. Using the system Gradle (9.3.1) to generate a wrapper pointing to the URL
+      3. Running ./gradlew --no-daemon help (downloads, extracts, primes tooling API)
+      4. Deleting cached ZIPs to reclaim image space
+    The script is self-contained with a shebang and set -euo pipefail, suitable
+    for being COPY'd and RUN'd as a file in _DOCKERFILE_BASE_KOTLIN.
+    """
+    lines = [
+        "#!/bin/bash",
+        "set -euo pipefail",
+        "",
+        "mkdir -p /tmp/gradle-warmup",
+        "cd /tmp/gradle-warmup",
+        "printf 'rootProject.name = \"warmup\"\\n' > settings.gradle",
+        "",
+    ]
+    for url in sorted(set(distribution_urls)):
+        lines += [
+            f"gradle --no-daemon wrapper --gradle-distribution-url '{url}'",
+            "./gradlew --no-daemon help",
+            "",
+        ]
+    lines += [
+        "find /root/.gradle/wrapper/dists -name '*.zip' -delete",
+        "cd /",
+        "rm -rf /tmp/gradle-warmup",
+    ]
+    return "\n".join(lines) + "\n"
+
 
 _DOCKERFILE_INSTANCE_KOTLIN = r"""FROM --platform={platform} {env_image_name}
 
