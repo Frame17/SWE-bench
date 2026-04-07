@@ -370,6 +370,14 @@ def run_instances(
 
     run_threadpool(run_evaluation_with_progress, payloads, max_workers)
     print("All instances run.")
+    import gc, os, contextlib
+
+    try:
+        client.close()
+    except ValueError:
+        pass
+    with contextlib.redirect_stderr(open(os.devnull, "w")):
+        gc.collect()
 
 
 def get_dataset_from_preds(
@@ -572,7 +580,7 @@ def main(
 
     # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
-    return make_run_report(
+    report = make_run_report(
         predictions,
         full_dataset,
         run_id,
@@ -581,6 +589,18 @@ def main(
         instance_image_tag,
         env_image_tag,
     )
+    # Close the Docker client and force-collect any lingering urllib3 response
+    # objects while stderr is suppressed, so Python's GC finalizer doesn't print
+    # "Exception ignored in ... ValueError: I/O operation on closed file."
+    import gc, os, contextlib
+
+    try:
+        client.close()
+    except ValueError:
+        pass
+    with contextlib.redirect_stderr(open(os.devnull, "w")):
+        gc.collect()
+    return report
 
 
 if __name__ == "__main__":
