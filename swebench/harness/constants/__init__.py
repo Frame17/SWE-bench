@@ -21,7 +21,7 @@ RUN_EVALUATION_LOG_DIR = Path("logs/run_evaluation")
 RUN_VALIDATION_LOG_DIR = Path("logs/run_validation")
 
 # Persistent cache for Gradle dependencies, shared across all builds.
-GRADLE_CACHE_DIR = Path("cache/gradle")
+GRADLE_CACHE_DIR = Path(".cache/gradle")
 
 
 # Constants - Task Instance Class
