@@ -29,9 +29,9 @@ _KAPT_MODULE_FLAGS = " ".join(
         f"--add-exports=jdk.compiler/{pkg}=ALL-UNNAMED "
         f"--add-opens=jdk.compiler/{pkg}=ALL-UNNAMED"
         for pkg in _KAPT_JAVAC_PACKAGES
-    ] + [
-        f"--add-exports={mod}/{pkg}=ALL-UNNAMED "
-        f"--add-opens={mod}/{pkg}=ALL-UNNAMED"
+    ]
+    + [
+        f"--add-exports={mod}/{pkg}=ALL-UNNAMED --add-opens={mod}/{pkg}=ALL-UNNAMED"
         for mod, pkg in _KOTLIN_JDK_PACKAGES
     ]
 )
@@ -48,17 +48,21 @@ _KAPT_MODULE_FLAGS = " ".join(
 # hosts while still being ample for KAPT / native / desugar workloads.
 # workers.max=2 reduces parallel task memory pressure further.
 GRADLE_PROPERTIES_SCRIPT = (
-    'mkdir -p /root/.gradle && '
+    "mkdir -p /root/.gradle && "
     'printf "%s\\n"'
-    ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError ' + _KAPT_MODULE_FLAGS + '"'
+    ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
     ' "org.gradle.java.installations.auto-detect=true"'
     ' "org.gradle.java.installations.auto-download=true"'
     ' "org.gradle.caching=true"'
     ' "org.gradle.parallel=true"'
     ' "org.gradle.workers.max=2"'
     ' "org.gradle.vfs.watch=false"'
-    ' "kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError ' + _KAPT_MODULE_FLAGS + '"'
-    ' > /root/.gradle/gradle.properties'
+    ' "kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    " > /root/.gradle/gradle.properties"
 )
 
 KOTLIN_LOGS_COLLECTOR_SCRIPT = r"""cat > /root/kotlin_logs_collector.sh << 'KOTLIN_LOGS_EOF'
@@ -166,13 +170,21 @@ SPECS_KOTLIN_ANDROID = {
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
-            "rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
+            'rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"',
         ],
-        "install": ["chmod +x gradlew",
-                    "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
-                    "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
-                     "cat /testbed/reports/junit/all-testsuites.xml"]}
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false",
+        ],
+        "test_cmd": [
+            "chmod +x gradlew",
+            "./gradlew test",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
 }
 
 SPECS_KOTLIN_ANDROID_21 = {
@@ -185,13 +197,21 @@ SPECS_KOTLIN_ANDROID_21 = {
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
-            "rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname \"CN=Android Debug,O=Android,C=US\""
+            'rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"',
         ],
-        "install": ["chmod +x gradlew",
-                    "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
-                    "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false"],
-        "test_cmd": ["chmod +x gradlew", "./gradlew test", "/bin/bash /root/static_verification.sh", "/bin/bash /root/kotlin_logs_collector.sh",
-                     "cat /testbed/reports/junit/all-testsuites.xml"]}
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false",
+        ],
+        "test_cmd": [
+            "chmod +x gradlew",
+            "./gradlew test",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
 }
 
 # Repos that use older Kotlin/Native versions (< 1.8) which don't ship
@@ -200,7 +220,10 @@ SPECS_KOTLIN_ANDROID_21 = {
 SPECS_KOTLIN_ANDROID_X86 = {
     "1.0.0": {
         **SPECS_KOTLIN_ANDROID["1.0.0"],
-        "docker_specs": {**SPECS_KOTLIN_ANDROID["1.0.0"]["docker_specs"], "arch": "x86_64"},
+        "docker_specs": {
+            **SPECS_KOTLIN_ANDROID["1.0.0"]["docker_specs"],
+            "arch": "x86_64",
+        },
     }
 }
 
@@ -256,7 +279,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "spacecowboy/Feeder",
             "wikimedia/apps-android-wikipedia",
             "you-apps/ClockYou",
-            "you-apps/RecordYou"
+            "you-apps/RecordYou",
         ]
     },
     # Repos that use Kotlin/Native (e.g. Kotlin Multiplatform with iOS targets)
