@@ -41,9 +41,29 @@ RUN apt-get update && \
   patch \
   openjdk-11-jdk-headless \
   openjdk-17-jdk-headless \
-  openjdk-21-jdk-headless && \
+  openjdk-21-jdk-headless \
+  chromium-browser && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROMIUM_FLAGS="--no-sandbox --headless --disable-gpu"
+
+# Install Eclipse Temurin 23 for projects that require JDK 23 toolchains
+# (e.g. slackhq/circuit). Not available via Ubuntu apt on Jammy.
+RUN ARCH="$(dpkg --print-architecture)" && \
+  case "$ARCH" in \
+    amd64) EA=x64 ;; \
+    arm64) EA=aarch64 ;; \
+    *) echo "unsupported arch for Temurin 23: $ARCH" && exit 1 ;; \
+  esac && \
+  curl -fsSL "https://api.adoptium.net/v3/binary/latest/23/ga/linux/${{EA}}/jdk/hotspot/normal/eclipse?project=jdk" \
+    -o /tmp/temurin23.tar.gz && \
+  mkdir -p /usr/lib/jvm && \
+  tar -xzf /tmp/temurin23.tar.gz -C /usr/lib/jvm && \
+  JDK_DIR="$(find /usr/lib/jvm -maxdepth 1 -mindepth 1 -type d -name 'jdk-23*' | head -1)" && \
+  test -n "$JDK_DIR" && mv "$JDK_DIR" /usr/lib/jvm/temurin-23-jdk && \
+  rm -f /tmp/temurin23.tar.gz
 
 # On ARM64 hosts, Android SDK build tools (aapt2, aidl, etc.) are x86-64-only
 # Linux ELFs.  Docker Desktop intercepts them via Rosetta/binfmt_misc emulation,

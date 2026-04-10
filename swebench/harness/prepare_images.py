@@ -1,9 +1,11 @@
 import docker
 import resource
+import json
+import os
 
 from argparse import ArgumentParser
 
-from swebench.harness.constants import KEY_INSTANCE_ID
+from swebench.harness.constants import KEY_INSTANCE_ID, LATEST
 from swebench.harness.docker_build import build_instance_images
 from swebench.harness.docker_utils import list_images
 from swebench.harness.test_spec.test_spec import make_test_spec
@@ -72,6 +74,7 @@ def main(
     namespace,
     tag,
     env_image_tag,
+    cache_path=None,
 ):
     """
     Build Docker images for the specified instances.
@@ -81,13 +84,42 @@ def main(
         max_workers (int): Number of workers for parallel processing.
         force_rebuild (bool): Whether to force rebuild all images.
         open_file_limit (int): Open file limit.
+        cache_path (str): Path to a cache file to record build status.
     """
     # Set open file limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
 
+    # Load cache
+    cache = {}
+    if cache_path and os.path.exists(cache_path):
+        with open(cache_path) as f:
+            cache = json.load(f)
+
+    # Filter instance_ids based on cache
+    if instance_ids and cache and not force_rebuild:
+        original_len = len(instance_ids)
+        instance_ids = [i for i in instance_ids if cache.get(i) != "fail"]
+        if len(instance_ids) < original_len:
+            print(f"Skipping {original_len - len(instance_ids)} instances that failed to build previously (from cache)")
+
     # Filter out instances that were not specified
-    dataset = load_swebench_dataset(dataset_name, split)
+    if instance_ids is not None and len(instance_ids) == 0:
+        dataset = []
+    else:
+        dataset = load_swebench_dataset(dataset_name, split, instance_ids=instance_ids)
+
+    # Filter based on cache
+    if cache and not force_rebuild:
+        original_count = len(dataset)
+        dataset = [inst for inst in dataset if cache.get(inst[KEY_INSTANCE_ID]) != "fail"]
+        if len(dataset) < original_count:
+            print(f"Skipping {original_count - len(dataset)} instances that failed to build previously (from cache)")
+
+    if len(dataset) == 0:
+        print("All images exist. Nothing left to build.")
+        return 0
+
     dataset = filter_dataset_to_build(
         dataset, instance_ids, client, force_rebuild, namespace, tag, env_image_tag
     )
@@ -106,6 +138,18 @@ def main(
         tag=tag,
         env_image_tag=env_image_tag,
     )
+
+    # Update cache
+    if cache_path:
+        for payload in successful:
+            spec = payload[0]
+            cache[spec.instance_id] = "success"
+        for payload in failed:
+            spec = payload[0]
+            cache[spec.instance_id] = "fail"
+        with open(cache_path, "w") as f:
+            json.dump(cache, f, indent=2)
+
     print(f"Successfully built {len(successful)} images")
     print(f"Failed to build {len(failed)} images")
 
@@ -141,10 +185,13 @@ if __name__ == "__main__":
         help="Namespace to use for the images (default: None)",
     )
     parser.add_argument(
-        "--tag", type=str, default=None, help="Tag to use for the images"
+        "--tag", type=str, default=LATEST, help="Tag to use for the images"
     )
     parser.add_argument(
-        "--env_image_tag", type=str, default=None, help="Environment image tag to use"
+        "--env_image_tag", type=str, default=LATEST, help="Environment image tag to use"
+    )
+    parser.add_argument(
+        "--cache_path", type=str, default=None, help="Path to a cache file to record build status"
     )
     args = parser.parse_args()
     main(**vars(args))

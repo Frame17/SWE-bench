@@ -6,62 +6,46 @@ This directory contains the benchmark dataset, evaluation configuration, and pip
 
 ## Pipeline Overview
 
-The pipeline transforms a raw collection of Gradle issues into a validated, evaluation-ready benchmark. It proceeds through five conceptual stages:
-
 ```
-Raw Dataset
+Raw Dataset  (data/gradle_benchmark_dataset.json)
     │
     ▼
-[1] Quality Filtering        — keep only human-approved, high-confidence instances
+[1] Build Docker Images     — one isolated environment per instance
     │
     ▼
-[2] Environment Preparation  — build reproducible Docker environments per instance
+[2] Analyze Build Logs      — determine which instances built successfully
     │
     ▼
-[3] Environment Validation   — verify builds succeed; drop broken instances
+[3] Filter to Buildable     — drop failed instances
     │
     ▼
-[4] Test Patch Generation    — an agent writes test patches that expose each bug
-    │
-    ▼
-[5] Evaluation               — score gold patches against generated test patches
+    data/gradle_benchmark_dataset_buildable.json
 ```
 
-Stages 1, 2, and 3 are fully automated. Stage 4 currently requires a manually-run agent. Stage 5 is automated once stage 4 is complete.
-
----
-
-## Stage Descriptions
-
-### Stage 1 — Quality Filtering
-
-The raw dataset is filtered down to instances that passed human review with a verdict of *correct* and a confidence of *high*. This ensures the benchmark contains only well-formed, unambiguous issues with verifiable solutions.
-
-### Stage 2 — Environment Preparation
-
-Each surviving instance gets its own isolated, reproducible Docker environment. This guarantees that evaluation results are consistent across runs and machines, and that each instance is tested in the exact environment it was originally reported against.
-
-### Stage 3 — Environment Validation
-
-After building, the pipeline checks which instances built successfully. Any instance whose environment could not be reproduced is dropped. This keeps the benchmark honest — only instances that can actually be run are evaluated.
-
-### Stage 4 — Test Patch Generation *(pending)*
-
-An AI agent generates a test patch for each instance. The test patch consists of one or more tests that reproduce the reported bug and fail against the original code. This stage is currently run manually.
-
-### Stage 5 — Evaluation
-
-Gold patches (known correct fixes) are applied to each instance and run against the generated test patches. An instance is considered *resolved* if the gold patch makes all generated tests pass. This measures how well the test patches capture the intended behavior.
+Steps 1–3 are fully automated via `pipeline.py`.
 
 ---
 
 ## Running the Pipeline
-
-All automatable stages (1, 2, 3) can be run together:
 
 ```bash
 cd gradle-bench
 python pipeline.py
 ```
 
-After completing stage 4 manually, run stage 5 to produce the final evaluation results.
+Output: `data/gradle_benchmark_dataset_buildable.json`
+
+---
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `pipeline.py` | Runs the full automated pipeline (steps 1–3) |
+| `build_failures.py` | Analyzes build logs; filters dataset to buildable instances |
+| `build_images.sh` | Invokes `swebench.harness.prepare_images` with project-specific flags |
+| `run_evaluation.sh` | Manual helper: runs `swebench.harness.run_evaluation` against a dataset |
+| `data/gradle_benchmark_dataset.json` | Raw input dataset |
+| `data/gradle_benchmark_dataset_buildable.json` | Output: instances with successful Docker builds |
+| `data/build_analysis.json` | Per-instance build log analysis (success/failure) |
+| `data/build_cache.json` | Docker build cache used by `prepare_images` |

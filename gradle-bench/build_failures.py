@@ -1,27 +1,47 @@
 """
-Steps 3a & 3b: Analyze Docker build logs and filter out failed instances.
+Steps 2a & 2b: Analyze Docker build logs and filter out failed instances.
 
-3a — analyze():        Scans logs/build_images/instances/<instance>/build_image.log
-                       and produces build_analysis.json with per-instance status.
-3b — filter_failures(): Reads build_analysis.json, removes failed instances from
-                        gradle_benchmark_dataset_correct_high.json (in-place).
+2a — analyze():         Scans logs/build_images/instances/<instance>/build_image.log
+                        and produces build_analysis.json with per-instance status.
+2b — filter_failures(): Reads build_analysis.json and the raw dataset, writes
+                        gradle_benchmark_dataset_buildable.json containing only
+                        instances whose Docker image built successfully.
 """
 import glob
+import json
 import os
-from filter import BENCH_DIR, DATA_DIR, load_json, save_json
 
-LOGS_DIR = os.path.join(BENCH_DIR, 'logs', 'run_evaluation', 'gradle_benchmark_v0_build', 'gold')
-BUILD_ANALYSIS = os.path.join(BENCH_DIR, 'build_analysis.json')
-DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset_reviewed.json')
+BENCH_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BENCH_DIR, 'data')
+LOGS_DIR = os.path.join(BENCH_DIR, 'logs', 'build_images', 'instances')
+
+
+def load_json(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def save_json(path, data):
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=2)
+    print(f'Saved {len(data)} items → {path}')
+BUILD_ANALYSIS = os.path.join(DATA_DIR, 'build_analysis.json')
+INPUT_DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset.json')
+OUTPUT_DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset_buildable.json')
 
 
 def analyze():
-    """Step 3a: scan build logs and write build_analysis.json."""
+    """Step 2a: scan build logs and write build_analysis.json."""
     results = []
     instance_dirs = sorted(glob.glob(os.path.join(LOGS_DIR, '*')))
     for instance_dir in instance_dirs:
-        instance = os.path.basename(instance_dir)
-        log_path = os.path.join(instance_dir, 'run_instance.log')
+        # Log dirs are named as Docker images: sweb.eval.{arch}.{instance_id}__{tag}
+        # Extract the bare instance_id to match the dataset's instance_id field.
+        dirname = os.path.basename(instance_dir)
+        parts = dirname.split('.', 3)
+        instance_id = parts[3].rsplit('__', 1)[0] if len(parts) == 4 else dirname
+
+        log_path = os.path.join(instance_dir, 'build_image.log')
         if not os.path.exists(log_path):
             continue
         with open(log_path) as f:
@@ -31,9 +51,9 @@ def analyze():
                 (line.strip() for line in content.splitlines() if 'BUILD FAILED' in line or 'non-zero code' in line),
                 'unknown error'
             )
-            results.append({'instance': instance, 'status': 'failure', 'error': error_line})
+            results.append({'instance_id': instance_id, 'status': 'failure', 'error': error_line})
         else:
-            results.append({'instance': instance, 'status': 'success'})
+            results.append({'instance_id': instance_id, 'status': 'success'})
 
     successes = sum(1 for r in results if r['status'] == 'success')
     failures = len(results) - successes
@@ -43,21 +63,22 @@ def analyze():
 
 
 def filter_failures():
-    """Step 3b: remove failed instances from the dataset (in-place)."""
+    """Step 2b: keep only successfully-built instances; write to OUTPUT_DATASET."""
     analysis = load_json(BUILD_ANALYSIS)
-    failed = {
-        entry['instance']
+    successful = {
+        entry['instance_id']
         for entry in analysis
-        if entry.get('status') == 'failure'
+        if entry.get('status') == 'success'
     }
-    print(f'Failed instances from build: {len(failed)}')
+    failed = len(analysis) - len(successful)
+    print(f'Failed instances from build: {failed}')
 
-    dataset = load_json(DATASET)
+    dataset = load_json(INPUT_DATASET)
     before = len(dataset)
-    filtered = [item for item in dataset if item.get('instance_id') not in failed]
-    save_json(DATASET, filtered)
-    print(f'Dataset: {before} → {len(filtered)} items (removed {before - len(filtered)})')
-    return DATASET
+    buildable = [item for item in dataset if item.get('instance_id') in successful]
+    save_json(OUTPUT_DATASET, buildable)
+    print(f'Dataset: {before} → {len(buildable)} buildable items (removed {before - len(buildable)})')
+    return OUTPUT_DATASET
 
 
 if __name__ == '__main__':

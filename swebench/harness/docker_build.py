@@ -476,14 +476,17 @@ def build_instance_images(
             remove_image(client, spec.instance_image_key, "quiet")
     _, env_failed = build_env_images(client, test_specs, force_rebuild, max_workers)
 
+    skipped_payloads = []
     if len(env_failed) > 0:
         # Don't build images for instances that depend on failed-to-build env images
+        env_failed_keys = {payload[0] for payload in env_failed}
         dont_run_specs = [
-            spec for spec in test_specs if spec.env_image_key in env_failed
+            spec for spec in test_specs if spec.env_image_key in env_failed_keys
         ]
         test_specs = [
-            spec for spec in test_specs if spec.env_image_key not in env_failed
+            spec for spec in test_specs if spec.env_image_key not in env_failed_keys
         ]
+        skipped_payloads = [(spec, client, None, False) for spec in dont_run_specs]
         print(
             f"Skipping {len(dont_run_specs)} instances - due to failed env image builds"
         )
@@ -494,6 +497,7 @@ def build_instance_images(
     payloads = [(spec, client, None, False) for spec in test_specs]
     # Build the instance images
     successful, failed = run_threadpool(build_instance_image, payloads, max_workers)
+    failed.extend(skipped_payloads)
     # Show how many images failed to build
     if len(failed) == 0:
         print("All instance images built successfully.")

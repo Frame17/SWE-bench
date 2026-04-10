@@ -65,6 +65,52 @@ GRADLE_PROPERTIES_SCRIPT = (
     " > /root/.gradle/gradle.properties"
 )
 
+# Smaller heaps for a few very large Kotlin/JVM builds that were OOM-killed (exit 137) in
+# gradle-bench image builds. Scoped to those repos only — not a global behavior change.
+GRADLE_PROPERTIES_SCRIPT_LOW_MEM = (
+    "mkdir -p /root/.gradle && "
+    'printf "%s\\n"'
+    ' "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    ' "org.gradle.java.installations.auto-detect=true"'
+    ' "org.gradle.java.installations.auto-download=true"'
+    ' "org.gradle.caching=true"'
+    ' "org.gradle.parallel=true"'
+    ' "org.gradle.workers.max=1"'
+    ' "org.gradle.vfs.watch=false"'
+    ' "kotlin.daemon.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=384m -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    " > /root/.gradle/gradle.properties"
+)
+
+# pinterest/ktlint :build-logic requires a Java 24+ toolchain (see gradle-bench logs).
+# Installed via openjdk-24-jdk-headless in the Dockerfile; Ubuntu names it java-24-openjdk-<arch>.
+_GRADLE_JAVA24_HOME = "/usr/lib/jvm/java-24-openjdk-amd64"
+
+# slackhq/circuit requires JDK 23 toolchain. Installed as Eclipse Temurin 23 in the Dockerfile.
+_GRADLE_JAVA23_HOME = "/usr/lib/jvm/temurin-23-jdk"
+
+GRADLE_PROPERTIES_SCRIPT_KTLINT = (
+    "mkdir -p /root/.gradle && "
+    'printf "%s\\n"'
+    f' "org.gradle.java.home={_GRADLE_JAVA24_HOME}"'
+    ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    ' "org.gradle.java.installations.auto-detect=true"'
+    ' "org.gradle.java.installations.auto-download=true"'
+    ' "org.gradle.caching=true"'
+    ' "org.gradle.parallel=true"'
+    ' "org.gradle.workers.max=2"'
+    ' "org.gradle.vfs.watch=false"'
+    ' "kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    " > /root/.gradle/gradle.properties"
+)
+
 KOTLIN_LOGS_COLLECTOR_SCRIPT = r"""cat > /root/kotlin_logs_collector.sh << 'KOTLIN_LOGS_EOF'
 #!/usr/bin/env bash
 
@@ -160,6 +206,137 @@ echo "STATIC VERIFICATION SUCCESS"
 STATIC_VERIFICATION_EOF
 """
 
+# InsertKoinIO/koin keeps the Gradle wrapper under projects/ (no root gradlew).
+STATIC_VERIFICATION_KOIN_SCRIPT = r"""cat > /root/static_verification.sh << 'STATIC_VERIFICATION_KOIN_EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cd projects
+./gradlew tasks
+
+echo "STATIC VERIFICATION SUCCESS"
+STATIC_VERIFICATION_KOIN_EOF
+"""
+
+STATIC_VERIFICATION_KTLINT_SCRIPT = r"""cat > /root/static_verification.sh << 'STATIC_VERIFICATION_KTLINT_EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+export JAVA_HOME=""" + _GRADLE_JAVA24_HOME + r"""
+export PATH="${JAVA_HOME}/bin:${PATH}"
+./gradlew tasks
+
+echo "STATIC VERIFICATION SUCCESS"
+STATIC_VERIFICATION_KTLINT_EOF
+"""
+
+SPECS_KOTLIN_LIBRARY = {
+    "1.0.0": {
+        "docker_specs": {"java_version": "17"},
+        "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT,
+            KOTLIN_LOGS_COLLECTOR_SCRIPT,
+            "chmod +x /root/kotlin_logs_collector.sh",
+            STATIC_VERIFICATION_SCRIPT,
+            "chmod +x /root/static_verification.sh",
+        ],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew build -x test",
+        ],
+        "test_cmd": [
+            "chmod +x gradlew",
+            "./gradlew test",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
+}
+
+SPECS_KOTLIN_LIBRARY_SERIALIZATION = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew build -x test -x koverVerify -x koverCachedVerify -x koverVerifyHocon",
+        ],
+        "test_cmd": [
+            "chmod +x gradlew",
+            "./gradlew test -x koverVerify -x koverCachedVerify -x koverVerifyHocon",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
+}
+
+SPECS_KOTLIN_LIBRARY_KTLINT = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "pre_install": [
+            f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH"',
+            GRADLE_PROPERTIES_SCRIPT_KTLINT,
+            KOTLIN_LOGS_COLLECTOR_SCRIPT,
+            "chmod +x /root/kotlin_logs_collector.sh",
+            STATIC_VERIFICATION_KTLINT_SCRIPT,
+            "chmod +x /root/static_verification.sh",
+        ],
+        "install": [
+            f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && chmod +x gradlew',
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== JAVA_HOME ===' && echo \"JAVA_HOME=${JAVA_HOME:-not set}\" && java -version 2>&1 | head -1 && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew build -x test",
+        ],
+        "test_cmd": [
+            f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && chmod +x gradlew',
+            f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && ./gradlew test',
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
+}
+
+SPECS_KOTLIN_LIBRARY_LOW_MEM = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT_LOW_MEM,
+            *SPECS_KOTLIN_LIBRARY["1.0.0"]["pre_install"][1:],
+        ],
+    }
+}
+
+SPECS_KOTLIN_LIBRARY_KOIN = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT,
+            KOTLIN_LOGS_COLLECTOR_SCRIPT,
+            "chmod +x /root/kotlin_logs_collector.sh",
+            STATIC_VERIFICATION_KOIN_SCRIPT,
+            "chmod +x /root/static_verification.sh",
+        ],
+        "install": [
+            "cd projects",
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assemble",
+        ],
+        "test_cmd": [
+            "cd projects && chmod +x gradlew",
+            "cd projects && ./gradlew test",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
+}
+
 SPECS_KOTLIN_ANDROID = {
     "1.0.0": {
         "docker_specs": {"java_version": "17"},
@@ -227,17 +404,173 @@ SPECS_KOTLIN_ANDROID_X86 = {
     }
 }
 
+# kotest, sqldelight, ktor — Kotlin Multiplatform projects whose `build` triggers
+# JS/Wasm browser tests that fail without a headless Chrome.  Use `assemble` in the
+# install step to avoid running tests, and skip browser test tasks in test_cmd.
+SPECS_KOTLIN_LIBRARY_KMP_BROWSER = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assemble",
+        ],
+    }
+}
+
+# JetBrains/Exposed starts Docker containers (MariaDB, MySQL, Postgres) for integration
+# tests inside the Gradle build.  Docker-in-Docker is unavailable in our images.
+SPECS_KOTLIN_LIBRARY_EXPOSED = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assemble",
+        ],
+        "test_cmd": [
+            "chmod +x gradlew",
+            "./gradlew test -x mariadbComposeBuild -x mariadbComposeUp -x mysqlComposeBuild -x mysqlComposeUp -x postgresComposeBuild -x postgresComposeUp -x oracleComposeBuild -x oracleComposeUp -x sqlserverComposeBuild -x sqlserverComposeUp",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
+}
+
+# slackhq/circuit requires JDK 23 toolchain.  Tell Gradle where to find JDK 23 (Temurin)
+# and JDK 24 (openjdk-24 from apt) so it can auto-detect them.
+GRADLE_PROPERTIES_SCRIPT_CIRCUIT = (
+    "mkdir -p /root/.gradle && "
+    'printf "%s\\n"'
+    ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    f' "org.gradle.java.installations.paths={_GRADLE_JAVA23_HOME},{_GRADLE_JAVA24_HOME}"'
+    ' "org.gradle.java.installations.auto-detect=true"'
+    ' "org.gradle.java.installations.auto-download=false"'
+    ' "org.gradle.caching=true"'
+    ' "org.gradle.parallel=true"'
+    ' "org.gradle.workers.max=2"'
+    ' "org.gradle.vfs.watch=false"'
+    ' "kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    " > /root/.gradle/gradle.properties"
+)
+
+SPECS_KOTLIN_LIBRARY_CIRCUIT = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT_CIRCUIT,
+            *SPECS_KOTLIN_LIBRARY["1.0.0"]["pre_install"][1:],
+        ],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assemble",
+        ],
+    }
+}
+
+# ReVanced/revanced-manager needs gpr.user and gpr.key properties set (GitHub Packages auth).
+# We inject dummy values so the settings.gradle.kts doesn't crash on missing extra properties.
+GRADLE_PROPERTIES_SCRIPT_REVANCED = (
+    "mkdir -p /root/.gradle && "
+    'printf "%s\\n"'
+    ' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    ' "org.gradle.java.installations.auto-detect=true"'
+    ' "org.gradle.java.installations.auto-download=true"'
+    ' "org.gradle.caching=true"'
+    ' "org.gradle.parallel=true"'
+    ' "org.gradle.workers.max=2"'
+    ' "org.gradle.vfs.watch=false"'
+    ' "kotlin.daemon.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError '
+    + _KAPT_MODULE_FLAGS
+    + '"'
+    ' "gpr.user=nobody"'
+    ' "gpr.key=none"'
+    " > /root/.gradle/gradle.properties"
+)
+
+SPECS_KOTLIN_ANDROID_REVANCED = {
+    "1.0.0": {
+        **SPECS_KOTLIN_ANDROID["1.0.0"],
+        "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT_REVANCED,
+            *SPECS_KOTLIN_ANDROID["1.0.0"]["pre_install"][1:],
+        ],
+    }
+}
+
+# arrow-kt/arrow: `build` triggers animalsnifferAndroidMain (missing androidMainClasses task),
+# kotlinStoreYarnLock (stale lock), and OOM on large multiplatform builds.
+# `assemble` skips all check-phase tasks.  Low-mem to avoid OOM.
+SPECS_KOTLIN_LIBRARY_ARROW = {
+    "1.0.0": {
+        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        "pre_install": [
+            GRADLE_PROPERTIES_SCRIPT_LOW_MEM,
+            *SPECS_KOTLIN_LIBRARY["1.0.0"]["pre_install"][1:],
+        ],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assemble",
+        ],
+    }
+}
+
+# nextcloud/talk-android: dependency verification fails for several JitPack/GitHub artifacts
+# whose checksums drifted from the committed verification-metadata.xml.
+# Disable verification for the install step; tests will also need it.
+SPECS_KOTLIN_ANDROID_TALK = {
+    "1.0.0": {
+        **SPECS_KOTLIN_ANDROID["1.0.0"],
+        "install": [
+            "chmod +x gradlew",
+            "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            "./gradlew assembleDebug --dependency-verification=off -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false",
+        ],
+        "test_cmd": [
+            "chmod +x gradlew",
+            "./gradlew test --dependency-verification=off",
+            "/bin/bash /root/static_verification.sh",
+            "/bin/bash /root/kotlin_logs_collector.sh",
+            "cat /testbed/reports/junit/all-testsuites.xml",
+        ],
+    }
+}
+
+# wireapp/wire-android: the repo uses a `kalium` git submodule that must be initialized
+# after clone.  3/12 instances also have bad base_commit SHAs that can't be fixed here.
+SPECS_KOTLIN_ANDROID_WIRE = {
+    "1.0.0": {
+        **SPECS_KOTLIN_ANDROID["1.0.0"],
+        "pre_install": [
+            "git submodule update --init --recursive || true",
+            *SPECS_KOTLIN_ANDROID["1.0.0"]["pre_install"],
+        ],
+    }
+}
+
 MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
     **{
         repo: SPECS_KOTLIN_ANDROID_21
         for repo in [
-            "T8RIN/ImageToolbox",
+            "DroidKaigi/conference-app-2024",
             "MMRLApp/MMRL",
             "NordicSemiconductor/Android-DFU-Library",
             "Stypox/dicio-android",
+            "T8RIN/ImageToolbox",
             "jarnedemeulemeester/findroid",
             "nextcloud/android",
             "thunderbird/thunderbird-android",
+            "accrescent/accrescent",
+            "stripe/stripe-android",
         ]
     },
     **{
@@ -246,14 +579,19 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "Aliucord/Aliucord",
             "AllanWang/Frost-for-Facebook",
             "AppIntro/AppIntro",
+            "Automattic/pocket-casts-android",
             "GetStream/whatsApp-clone-compose",
             "GrapheneOS/Camera",
+            "HabitRPG/habitica-android",
             "IacobIonut01/Gallery",
             "LemmyNet/jerboa",
             "LibChecker/LibChecker",
             "Mahmud0808/ColorBlendr",
+            "MohamedRejeb/Compose-Rich-Editor",
+            "NordicSemiconductor/Android-nRF-Toolbox",
             "Pool-Of-Tears/GreenStash",
             "Pool-Of-Tears/Myne",
+            "RikkaApps/Shizuku",
             "Tapadoo/Alerter",
             "TrianguloY/URLCheck",
             "android/nowinandroid",
@@ -264,6 +602,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "avluis/Hentoid",
             "beemdevelopment/Aegis",
             "d4rken-org/capod",
+            "element-hq/element-android",
             "flipperdevices/Flipper-Android-App",
             "getodk/collect",
             "iSoron/uhabits",
@@ -271,12 +610,14 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "keymapperorg/KeyMapper",
             "kylecorry31/Trail-Sense",
             "leonlatsch/Photok",
+            "mihonapp/mihon",
             "nextcloud/notes-android",
             "owncloud/android",
             "oxygen-updater/oxygen-updater",
             "patzly/grocy-android",
             "recloudstream/cloudstream",
             "spacecowboy/Feeder",
+            "tasks/tasks",
             "wikimedia/apps-android-wikipedia",
             "you-apps/ClockYou",
             "you-apps/RecordYou",
@@ -289,9 +630,45 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
         repo: SPECS_KOTLIN_ANDROID_X86
         for repo in [
             "DroidKaigi/conference-app-2021",
+            "DroidKaigi/conference-app-2022",
             "DroidKaigi/conference-app-2023",
             "Shabinder/SpotiFlyer",
             "kasem-sm/SlimeKT",
+        ]
+    },
+    # Pure Kotlin/JVM/multiplatform libraries — no Android app module,
+    # install compiles sources without running tests.
+    **{
+        repo: SPECS_KOTLIN_LIBRARY_LOW_MEM
+        for repo in [
+            "Kotlin/dokka",
+            "Kotlin/kotlinx.coroutines",
+        ]
+    },
+    **{"InsertKoinIO/koin": SPECS_KOTLIN_LIBRARY_KOIN},
+    **{"pinterest/ktlint": SPECS_KOTLIN_LIBRARY_KTLINT},
+    **{"Kotlin/kotlinx.serialization": SPECS_KOTLIN_LIBRARY_SERIALIZATION},
+    **{"JetBrains/Exposed": SPECS_KOTLIN_LIBRARY_EXPOSED},
+    **{"slackhq/circuit": SPECS_KOTLIN_LIBRARY_CIRCUIT},
+    **{"ReVanced/revanced-manager": SPECS_KOTLIN_ANDROID_REVANCED},
+    **{
+        repo: SPECS_KOTLIN_LIBRARY_KMP_BROWSER
+        for repo in [
+            "kotest/kotest",
+            "ktorio/ktor",
+            "sqldelight/sqldelight",
+        ]
+    },
+    **{"arrow-kt/arrow": SPECS_KOTLIN_LIBRARY_ARROW},
+    **{"nextcloud/talk-android": SPECS_KOTLIN_ANDROID_TALK},
+    **{"wireapp/wire-android": SPECS_KOTLIN_ANDROID_WIRE},
+    **{
+        repo: SPECS_KOTLIN_LIBRARY
+        for repo in [
+            "JetBrains/compose-multiplatform",
+            "ReactiveX/RxKotlin",
+            "detekt/detekt",
+            "google/ksp",
         ]
     },
 }
