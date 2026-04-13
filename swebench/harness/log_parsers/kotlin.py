@@ -151,6 +151,7 @@ MAP_REPO_TO_PARSER_KOTLIN = {
         "d4rken-org/capod",
         "flipperdevices/Flipper-Android-App",
         "getodk/collect",
+        "gradle/gradle",
         "iSoron/uhabits",
         "jaredsburrows/android-gradle-java-app-template",
         "jarnedemeulemeester/findroid",
