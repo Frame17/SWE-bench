@@ -266,6 +266,7 @@ MAP_REPO_VERSION_TO_SPECS_KOTLIN = {
             "d4rken-org/capod",
             "flipperdevices/Flipper-Android-App",
             "getodk/collect",
+            "gradle/gradle",
             "iSoron/uhabits",
             "jaredsburrows/android-gradle-java-app-template",
             "keymapperorg/KeyMapper",
