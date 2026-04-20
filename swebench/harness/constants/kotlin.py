@@ -164,7 +164,7 @@ SPECS_KOTLIN_ANDROID = {
     "1.0.0": {
         "docker_specs": {"java_version": "17"},
         "pre_install": [
-            GRADLE_PROPERTIES_SCRIPT,
+            GRADLE_PRE_RUN_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
@@ -191,7 +191,7 @@ SPECS_KOTLIN_ANDROID_21 = {
     "1.0.0": {
         "docker_specs": {"java_version": "21"},
         "pre_install": [
-            GRADLE_PROPERTIES_SCRIPT,
+            GRADLE_PRE_RUN_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
