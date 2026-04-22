@@ -2,6 +2,7 @@ import docker
 import resource
 import json
 import os
+import threading
 
 from argparse import ArgumentParser
 
@@ -127,6 +128,18 @@ def main(
         print("All images exist. Nothing left to build.")
         return 0
 
+    # Build a cache-writing callback so the file is updated after each image build
+    on_complete = None
+    if cache_path:
+        cache_lock = threading.Lock()
+
+        def on_complete(payload, success):
+            spec = payload[0]
+            with cache_lock:
+                cache[spec.instance_id] = "success" if success else "fail"
+                with open(cache_path, "w") as f:
+                    json.dump(cache, f, indent=2)
+
     # Build images for remaining instances
     successful, failed = build_instance_images(
         client=client,
@@ -136,18 +149,8 @@ def main(
         namespace=namespace,
         tag=tag,
         env_image_tag=env_image_tag,
+        on_complete=on_complete,
     )
-
-    # Update cache
-    if cache_path:
-        for payload in successful:
-            spec = payload[0]
-            cache[spec.instance_id] = "success"
-        for payload in failed:
-            spec = payload[0]
-            cache[spec.instance_id] = "fail"
-        with open(cache_path, "w") as f:
-            json.dump(cache, f, indent=2)
 
     print(f"Successfully built {len(successful)} images")
     print(f"Failed to build {len(failed)} images")

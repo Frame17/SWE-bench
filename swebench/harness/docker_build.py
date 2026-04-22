@@ -449,6 +449,7 @@ def build_instance_images(
     namespace: str = None,
     tag: str = None,
     env_image_tag: str = None,
+    on_complete=None,
 ):
     """
     Builds the instance images required for the dataset if they do not already exist.
@@ -496,7 +497,7 @@ def build_instance_images(
     # `logger` is set to None b/c logger is created in build-instage_image
     payloads = [(spec, client, None, False) for spec in test_specs]
     # Build the instance images
-    successful, failed = run_threadpool(build_instance_image, payloads, max_workers)
+    successful, failed = run_threadpool(build_instance_image, payloads, max_workers, on_complete=on_complete)
     failed.extend(skipped_payloads)
     # Show how many images failed to build
     if len(failed) == 0:
