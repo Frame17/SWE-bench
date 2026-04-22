@@ -96,25 +96,24 @@ def main(
         with open(cache_path) as f:
             cache = json.load(f)
 
-    # Filter instance_ids based on cache
-    if instance_ids and cache and not force_rebuild:
-        original_len = len(instance_ids)
-        instance_ids = [i for i in instance_ids if cache.get(i) != "fail"]
-        if len(instance_ids) < original_len:
-            print(f"Skipping {original_len - len(instance_ids)} instances that failed to build previously (from cache)")
-
     # Filter out instances that were not specified
     if instance_ids is not None and len(instance_ids) == 0:
         dataset = []
     else:
         dataset = load_swebench_dataset(dataset_name, split, instance_ids=instance_ids)
 
-    # Filter based on cache
-    if cache and not force_rebuild:
+    # Filter based on cache:
+    # - without force_rebuild: skip all cached instances (success or failure)
+    # - with force_rebuild: only skip successfully built instances
+    if cache:
         original_count = len(dataset)
-        dataset = [inst for inst in dataset if cache.get(inst[KEY_INSTANCE_ID]) != "fail"]
-        if len(dataset) < original_count:
-            print(f"Skipping {original_count - len(dataset)} instances that failed to build previously (from cache)")
+        if force_rebuild:
+            dataset = [inst for inst in dataset if cache.get(inst[KEY_INSTANCE_ID]) != "success"]
+        else:
+            dataset = [inst for inst in dataset if inst[KEY_INSTANCE_ID] not in cache]
+        skipped = original_count - len(dataset)
+        if skipped:
+            print(f"Skipping {skipped} instances found in build cache")
 
     if len(dataset) == 0:
         print("All images exist. Nothing left to build.")
