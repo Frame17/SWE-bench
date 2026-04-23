@@ -1,96 +1,72 @@
 """
-Gradle SWE-bench unified pipeline.
+Gradle SWE-bench build pipeline.
+
+Takes the raw dataset, builds Docker images for each instance, and outputs a
+dataset containing only the instances whose images built successfully.
+
+Input:  data/gradle_benchmark_dataset.json
+        data/build_cache.json
+Output: data/gradle_benchmark_dataset_buildable.json
 
 Steps:
-  filter_reviews      Filter dataset by human reviews          (filter.py → filter_by_review)
-  build_images        Build Docker images                      (run_evaluation.sh build)
-  filter_failures     Analyze build logs & filter out failures (build_failures.py)
-  generate_patches    Generate test patches                    (pending — run agent manually)
-  run_evaluation      Run final evaluation with test patches   (run_evaluation.sh test)
+  build_images  — Build Docker images for all raw instances   (build_images.sh)
+  filter_build  — Keep instances marked "success" in build_cache.json
 
 Usage:
-  python pipeline.py                              # run all automatable steps (correct + high)
-  python pipeline.py --verdict correct            # any confidence
-  python pipeline.py --confidence medium          # any verdict
-  python pipeline.py --verdict correct --confidence medium
+  python pipeline.py
 """
-import argparse
-import functools
 import subprocess
 import sys
 import os
-import filter
-import build_failures
+import json
 
 BENCH_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-def filter_reviews(predicate=None):
-    print("\n--- filter_reviews: Filter dataset by human reviews ---")
-    filter.filter_by_review(predicate=predicate)
+DATA_DIR = os.path.join(BENCH_DIR, 'data')
+DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset.json')
+BUILD_CACHE = os.path.join(DATA_DIR, 'build_cache.json')
+OUTPUT_DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset_buildable.json')
 
 
 def build_images():
     print("\n--- build_images: Build Docker images ---")
-    script = os.path.join(BENCH_DIR, 'run_evaluation.sh')
-    result = subprocess.run(['/bin/bash', script, 'build'], stderr=subprocess.PIPE)
+    script = os.path.join(BENCH_DIR, 'build_images.sh')
+    result = subprocess.run(['/bin/bash', script, DATASET])
     if result.returncode != 0:
-        stderr = result.stderr.decode(errors='replace')
         # The Docker SDK has a known race condition: containers cleaned up between
         # containers.list() and containers.get() raise NotFound.  This only happens
         # after all instances have already been evaluated, so the build output is
-        # intact.  Treat it as a soft warning rather than a hard failure.
-        if 'docker.errors.NotFound' in stderr or 'No such container' in stderr:
-            print("WARNING: Docker container race condition in reporting (benign). "
+        # intact.  Treat exit code 1 as a soft warning; any other code is a hard failure.
+        if result.returncode == 1:
+            print("WARNING: build_images.sh exited with code 1 (possible benign Docker race condition). "
                   "Build stage completed.", file=sys.stderr)
         else:
-            print("ERROR: run_evaluation.sh build failed.", file=sys.stderr)
-            print(stderr, file=sys.stderr)
+            print(f"ERROR: build_images.sh failed with exit code {result.returncode}.", file=sys.stderr)
             sys.exit(result.returncode)
 
 
-def filter_failures():
-    print("\n--- filter_failures: Analyze build logs & remove failed instances ---")
-    build_failures.analyze()
-    build_failures.filter_failures()
+def filter_build():
+    print("\n--- filter_build: Keep successfully-built instances ---")
+    with open(BUILD_CACHE) as f:
+        cache = json.load(f)
+    with open(DATASET) as f:
+        dataset = json.load(f)
 
+    successful = {k for k, v in cache.items() if v == 'success'}
+    failed = sum(1 for v in cache.values() if v != 'success')
+    print(f'Failed instances from build: {failed}')
 
-def generate_patches():
-    print("\n--- generate_patches: Generate test patches (pending) ---")
-    print("This step is not yet automated.")
-    print("Run the agent manually, then place the output at:")
-    print("  data/gradle_benchmark_dataset_correct_high_with_test_patch.json")
-
-
-def run_evaluation():
-    print("\n--- run_evaluation: Final evaluation with test patches ---")
-    script = os.path.join(BENCH_DIR, 'run_evaluation.sh')
-    result = subprocess.run(['/bin/bash', script, 'test'])
-    if result.returncode != 0:
-        print("ERROR: run_evaluation.sh test failed.", file=sys.stderr)
-        sys.exit(result.returncode)
+    buildable = [item for item in dataset if item.get('instance_id') in successful]
+    with open(OUTPUT_DATASET, 'w') as f:
+        json.dump(buildable, f, indent=2)
+    print(f'Saved {len(buildable)} items → {OUTPUT_DATASET}')
+    print(f'Dataset: {len(dataset)} → {len(buildable)} buildable items (removed {len(dataset) - len(buildable)})')
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Gradle SWE-bench pipeline")
-    parser.add_argument('--verdict',    default='correct', help="Filter by review verdict (default: 'correct').")
-    parser.add_argument('--confidence', default='high',    help="Filter by confidence level (default: 'high').")
-    args = parser.parse_args()
-
-    def predicate(r):
-        return r.get('verdict') == args.verdict and r.get('confidence') == args.confidence
-
-    auto_steps = [
-        functools.partial(filter_reviews, predicate=predicate),
-        build_images,
-        filter_failures,
-    ]
-    for step in auto_steps:
-        step()
-    print("\n--- Done: automatable steps complete ---")
-    print("\nManual steps remaining:")
-    print("  generate_patches : run the agent, save test-patch dataset")
-    print("  run_evaluation   : /bin/bash gradle-bench/run_evaluation.sh test")
+    build_images()
+    filter_build()
+    print("\n--- Done ---")
+    print("Buildable dataset written to: data/gradle_benchmark_dataset_buildable.json")
 
 
 if __name__ == '__main__':

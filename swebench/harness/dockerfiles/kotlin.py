@@ -41,9 +41,13 @@ RUN apt-get update && \
   patch \
   openjdk-11-jdk-headless \
   openjdk-17-jdk-headless \
-  openjdk-21-jdk-headless && \
+  openjdk-21-jdk-headless \
+  chromium-browser && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
+
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROMIUM_FLAGS="--no-sandbox --headless --disable-gpu"
 
 # On ARM64 hosts, Android SDK build tools (aapt2, aidl, etc.) are x86-64-only
 # Linux ELFs.  Docker Desktop intercepts them via Rosetta/binfmt_misc emulation,
