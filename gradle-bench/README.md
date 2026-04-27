@@ -48,7 +48,7 @@ Anything after the dataset path is forwarded to `prepare_images` verbatim. Usefu
 |---|---|
 | `--instance_ids ID1 ID2 …` | Build only the listed instances (rest of the dataset is ignored). |
 | `--force_rebuild true` | Rebuild every instance regardless of cache state — slow; mainly for full refreshes. |
-| `--rebuild_failures` | **Retry only the instances whose cache entry is a previous failure.** Skips cached successes and instances not in the cache. Useful when a transient build issue (network, registry hiccup, runner pressure) caused some images to fail and you want to retry just those without re-running the whole pipeline. |
+| `--rebuild_failures` | **Build every instance that doesn't have a confirmed-good image** in the local Docker daemon. Covers cached failures, stale successes (cache says success but image is gone — e.g. after `docker image prune`), and instances not in the cache at all. Cached successes whose image is present are still skipped. Less broad than `--force_rebuild` (which rebuilds everything regardless of cache). |
 
 Example — retry every failed build in the dataset:
 
