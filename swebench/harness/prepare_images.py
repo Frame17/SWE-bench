@@ -125,21 +125,19 @@ def main(
     if cache:
         original_count = len(dataset)
         kept = []
+        found_existing = 0  # cached 'success' + image present (uniformly skipped)
         stale_success = []  # cached 'success' entries whose image was missing
         cached_failures = []  # cached non-success entries we're skipping
         rebuilt_failures = []  # instances we're rebuilding because of --rebuild_failures
+        skipped_not_in_cache = 0  # rebuild_failures only: instances not in cache
         for instance in dataset:
             iid = instance[KEY_INSTANCE_ID]
             status = cache.get(iid)
 
-            if rebuild_failures:
-                # Failure-retry mode: only build cached-failure entries; skip
-                # everything else (successes and not-in-cache).
-                if status is not None and status != "success":
-                    kept.append(instance)
-                    rebuilt_failures.append((iid, status))
-                continue
-
+            # Cached-success path runs in every mode so users always see which
+            # images are being reused. The only difference is whether stale
+            # successes (cache says success, image missing) get rebuilt:
+            # rebuild_failures targets failures specifically, so we skip them.
             if status == "success":
                 spec = make_test_spec(
                     instance,
@@ -149,20 +147,44 @@ def main(
                 )
                 if spec.instance_image_key in existing_images:
                     print(f"  Found existing image: {spec.instance_image_key}")
-                    continue  # skip — cache says success and image is present
+                    found_existing += 1
+                    continue
                 stale_success.append((iid, spec.instance_image_key))
+                if rebuild_failures:
+                    # Honour the explicit "only failures" filter — don't
+                    # silently sweep stale successes into the rebuild set.
+                    continue
                 kept.append(instance)
-            elif status is not None and not force_rebuild:
+                continue
+
+            # Non-success and not-in-cache paths
+            if rebuild_failures:
+                # Only rebuild instances whose cache records an explicit failure.
+                if status is not None and status != "success":
+                    kept.append(instance)
+                    rebuilt_failures.append((iid, status))
+                else:
+                    skipped_not_in_cache += 1
+                continue
+
+            if status is not None and not force_rebuild:
                 # Cached failure (or any non-success) — skip unless forcing.
                 cached_failures.append((iid, status))
                 continue
-            else:
-                # Not in cache, or in cache but force_rebuild — build it.
-                kept.append(instance)
+
+            # Not in cache, or in cache but force_rebuild — build it.
+            kept.append(instance)
+
         dataset = kept
-        skipped = original_count - len(dataset)
-        if skipped:
-            print(f"Skipping {skipped} instances found in build cache")
+        if found_existing:
+            print(
+                f"Skipping {found_existing} instances with existing images in build cache"
+            )
+        if rebuild_failures and skipped_not_in_cache:
+            print(
+                f"Skipping {skipped_not_in_cache} instance(s) not in the build "
+                "cache (--rebuild_failures only targets cached failures)"
+            )
         if rebuilt_failures:
             print(
                 f"--rebuild_failures: retrying {len(rebuilt_failures)} "
