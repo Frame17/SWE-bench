@@ -91,6 +91,11 @@ def main(
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
 
+    # Snapshot the local Docker image tags once so the cache filter and
+    # filter_dataset_to_build can both verify image presence without
+    # repeatedly querying the daemon.
+    existing_images = list_images(client)
+
     # Load cache
     cache = {}
     if cache_path and os.path.exists(cache_path):
@@ -104,17 +109,52 @@ def main(
         dataset = load_swebench_dataset(dataset_name, split, instance_ids=instance_ids)
 
     # Filter based on cache:
-    # - without force_rebuild: skip all cached instances (success or failure)
-    # - with force_rebuild: only skip successfully built instances
+    # - 'success' entries are skipped only when the corresponding image is
+    #   actually present in the local Docker daemon. This guards against
+    #   stale cache entries (e.g. after `docker image prune`) that would
+    #   otherwise cause prepare_images to no-op while the image is missing.
+    # - 'fail' (and any non-success) entries: skipped without force_rebuild,
+    #   rebuilt with force_rebuild — same as before.
+    # - Instances not in the cache: built unconditionally — same as before.
     if cache:
         original_count = len(dataset)
-        if force_rebuild:
-            dataset = [inst for inst in dataset if cache.get(inst[KEY_INSTANCE_ID]) != "success"]
-        else:
-            dataset = [inst for inst in dataset if inst[KEY_INSTANCE_ID] not in cache]
+        kept = []
+        stale_success = []  # cached 'success' entries whose image was missing
+        for instance in dataset:
+            iid = instance[KEY_INSTANCE_ID]
+            status = cache.get(iid)
+            if status == "success":
+                spec = make_test_spec(
+                    instance,
+                    namespace=namespace,
+                    instance_image_tag=tag,
+                    env_image_tag=env_image_tag,
+                )
+                if spec.instance_image_key in existing_images:
+                    print(f"  Found existing image: {spec.instance_image_key}")
+                    continue  # skip — cache says success and image is present
+                stale_success.append((iid, spec.instance_image_key))
+                kept.append(instance)
+            elif status is not None and not force_rebuild:
+                # Cached failure (or any non-success) — skip unless forcing.
+                continue
+            else:
+                # Not in cache, or in cache but force_rebuild — build it.
+                kept.append(instance)
+        dataset = kept
         skipped = original_count - len(dataset)
         if skipped:
             print(f"Skipping {skipped} instances found in build cache")
+        if stale_success:
+            print(
+                f"Note: {len(stale_success)} cached 'success' entr"
+                f"{'y' if len(stale_success) == 1 else 'ies'} reference "
+                "image(s) missing from the local Docker daemon — will rebuild:"
+            )
+            for iid, key in stale_success[:10]:
+                print(f"  {iid}  →  {key}")
+            if len(stale_success) > 10:
+                print(f"  ... and {len(stale_success) - 10} more")
 
     if len(dataset) == 0:
         print("All images exist. Nothing left to build.")
@@ -193,7 +233,10 @@ if __name__ == "__main__":
         "--env_image_tag", type=str, default=LATEST, help="Environment image tag to use"
     )
     parser.add_argument(
-        "--cache_path", type=str, default=None, help="Path to a cache file to record build status"
+        "--cache_path",
+        type=str,
+        default=None,
+        help="Path to a cache file to record build status",
     )
     args = parser.parse_args()
     main(**vars(args))
