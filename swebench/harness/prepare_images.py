@@ -76,6 +76,7 @@ def main(
     tag,
     env_image_tag,
     cache_path=None,
+    rebuild_failures=False,
 ):
     """
     Build Docker images for the specified instances.
@@ -86,6 +87,11 @@ def main(
         force_rebuild (bool): Whether to force rebuild all images.
         open_file_limit (int): Open file limit.
         cache_path (str): Path to a cache file to record build status.
+        rebuild_failures (bool): Only rebuild instances whose cache entry
+            is a previous failure; skip everything else (cached successes
+            and not-in-cache instances). Useful for retrying a flaky or
+            transient build failure without disturbing the rest of the
+            dataset. Mutually-overrides the default cache-skip behavior.
     """
     # Set open file limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
@@ -121,9 +127,19 @@ def main(
         kept = []
         stale_success = []  # cached 'success' entries whose image was missing
         cached_failures = []  # cached non-success entries we're skipping
+        rebuilt_failures = []  # instances we're rebuilding because of --rebuild_failures
         for instance in dataset:
             iid = instance[KEY_INSTANCE_ID]
             status = cache.get(iid)
+
+            if rebuild_failures:
+                # Failure-retry mode: only build cached-failure entries; skip
+                # everything else (successes and not-in-cache).
+                if status is not None and status != "success":
+                    kept.append(instance)
+                    rebuilt_failures.append((iid, status))
+                continue
+
             if status == "success":
                 spec = make_test_spec(
                     instance,
@@ -147,6 +163,15 @@ def main(
         skipped = original_count - len(dataset)
         if skipped:
             print(f"Skipping {skipped} instances found in build cache")
+        if rebuilt_failures:
+            print(
+                f"--rebuild_failures: retrying {len(rebuilt_failures)} "
+                f"instance(s) whose cache entry is a previous failure:"
+            )
+            for iid, status in rebuilt_failures[:10]:
+                print(f"  {iid}  ({status})")
+            if len(rebuilt_failures) > 10:
+                print(f"  ... and {len(rebuilt_failures) - 10} more")
         if cached_failures:
             print(
                 f"Note: {len(cached_failures)} instance(s) skipped because the "
@@ -172,8 +197,17 @@ def main(
         print("All images exist. Nothing left to build.")
         return 0
 
+    # When --rebuild_failures is set, treat the kept instances as forced
+    # rebuilds in filter_dataset_to_build so a stale-fail entry whose image
+    # somehow exists locally still gets rebuilt as the user explicitly asked.
     dataset = filter_dataset_to_build(
-        dataset, instance_ids, client, force_rebuild, namespace, tag, env_image_tag
+        dataset,
+        instance_ids,
+        client,
+        force_rebuild or rebuild_failures,
+        namespace,
+        tag,
+        env_image_tag,
     )
 
     if len(dataset) == 0:
@@ -249,6 +283,16 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Path to a cache file to record build status",
+    )
+    parser.add_argument(
+        "--rebuild_failures",
+        action="store_true",
+        help=(
+            "Rebuild only those instances whose cache entry records a "
+            "previous build failure. Skips cached successes and instances "
+            "not in the cache. Useful for retrying transient/flaky build "
+            "failures without disturbing the rest of the dataset."
+        ),
     )
     args = parser.parse_args()
     main(**vars(args))
