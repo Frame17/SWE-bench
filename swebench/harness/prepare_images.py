@@ -120,6 +120,7 @@ def main(
         original_count = len(dataset)
         kept = []
         stale_success = []  # cached 'success' entries whose image was missing
+        cached_failures = []  # cached non-success entries we're skipping
         for instance in dataset:
             iid = instance[KEY_INSTANCE_ID]
             status = cache.get(iid)
@@ -137,6 +138,7 @@ def main(
                 kept.append(instance)
             elif status is not None and not force_rebuild:
                 # Cached failure (or any non-success) — skip unless forcing.
+                cached_failures.append((iid, status))
                 continue
             else:
                 # Not in cache, or in cache but force_rebuild — build it.
@@ -145,6 +147,16 @@ def main(
         skipped = original_count - len(dataset)
         if skipped:
             print(f"Skipping {skipped} instances found in build cache")
+        if cached_failures:
+            print(
+                f"Note: {len(cached_failures)} instance(s) skipped because the "
+                "cache records a previous build failure — pass --force_rebuild "
+                "to retry:"
+            )
+            for iid, status in cached_failures[:10]:
+                print(f"  {iid}  ({status})")
+            if len(cached_failures) > 10:
+                print(f"  ... and {len(cached_failures) - 10} more")
         if stale_success:
             print(
                 f"Note: {len(stale_success)} cached 'success' entr"
