@@ -207,9 +207,24 @@ STATIC_VERIFICATION_EOF
 
 # ---------- Generic spec categories ----------
 
+# All Kotlin library / multiplatform builds are pinned to x86_64.
+#
+# Why: Kotlin/Native ships prebuilt toolchain binaries
+# (kotlin-native-prebuilt-<version>-<host>.tar.gz) that the Kotlin Gradle
+# plugin downloads during :commonizeNativeDistribution and similar tasks.
+# JetBrains publishes the linux-x86_64 prebuilt to Maven Central, but the
+# linux-aarch64 prebuilt is NOT on Maven Central — so the build fails on
+# arm64 hosts (Apple Silicon, ARM Linux runners) with:
+#   "Could not find kotlin-native-prebuilt-<v>-linux-aarch64.tar.gz"
+# This affects every Kotlin Multiplatform project we've tested in the
+# benchmark, regardless of Kotlin version (we've reproduced it on 2.1.0).
+#
+# Pinning to x86_64 here means Docker uses QEMU emulation transparently
+# on arm64 hosts; the Gradle plugin then downloads the linux-x86_64
+# prebuilt (which Maven Central does have) and the build proceeds.
 SPECS_KOTLIN_LIBRARY = {
     "1.0.0": {
-        "docker_specs": {"java_version": "17"},
+        "docker_specs": {"java_version": "17", "arch": "x86_64"},
         "pre_install": [
             GRADLE_PROPERTIES_SCRIPT,
             KOTLIN_LOGS_COLLECTOR_SCRIPT,
@@ -286,9 +301,11 @@ SPECS_KOTLIN_ANDROID_21 = {
     }
 }
 
-# Repos that use older Kotlin/Native versions (< 1.8) which don't ship
-# linux-aarch64 prebuilt binaries. These must be built under x86_64 even on
-# ARM hosts (Docker will use QEMU emulation automatically).
+# Android repos that bring in Kotlin/Native via Kotlin Multiplatform with
+# iOS or Native targets, hitting the same missing linux-aarch64 prebuilt
+# issue documented above SPECS_KOTLIN_LIBRARY. SPECS_KOTLIN_ANDROID itself
+# stays host-arch (most pure-Android builds work fine on arm64); use this
+# variant for the few Android repos that need x86_64 + QEMU emulation.
 SPECS_KOTLIN_ANDROID_X86 = {
     "1.0.0": {
         **SPECS_KOTLIN_ANDROID["1.0.0"],
