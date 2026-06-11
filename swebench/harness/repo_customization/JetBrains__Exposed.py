@@ -1,4 +1,7 @@
-from swebench.harness.constants.kotlin_base import SPECS_KOTLIN_LIBRARY
+from swebench.harness.constants.kotlin_base import (
+    SPECS_KOTLIN_LIBRARY,
+    WARM_TEST_DEPENDENCIES_CMD,
+)
 
 # Exposed starts Docker containers (MariaDB, MySQL, Postgres) for integration
 # tests inside the Gradle build.  Docker-in-Docker is unavailable in our images.
@@ -8,14 +11,12 @@ SPECS = {
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assemble",
         ],
         "test_cmd": [
             "chmod +x gradlew",
             "./gradlew test -x mariadbComposeBuild -x mariadbComposeUp -x mysqlComposeBuild -x mysqlComposeUp -x postgresComposeBuild -x postgresComposeUp -x oracleComposeBuild -x oracleComposeUp -x sqlserverComposeBuild -x sqlserverComposeUp",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }

@@ -9,7 +9,7 @@ Input:  data/gradle_benchmark_dataset.json
 Output: data/gradle_benchmark_dataset_buildable.json
 
 Steps:
-  build_images  — Build Docker images for all raw instances   (build_images.sh)
+  build_dataset — Extend tasks with test_cmd + build Docker images (build_dataset.sh)
   filter_build  — Keep instances marked "success" in build_cache.json
 
 Usage:
@@ -27,9 +27,9 @@ BUILD_CACHE = os.path.join(DATA_DIR, 'build_cache.json')
 OUTPUT_DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset_buildable.json')
 
 
-def build_images():
-    print("\n--- build_images: Build Docker images ---")
-    script = os.path.join(BENCH_DIR, 'build_images.sh')
+def build_dataset():
+    print("\n--- build_dataset: Extend tasks with test_cmd + build Docker images ---")
+    script = os.path.join(BENCH_DIR, 'build_dataset.sh')
     result = subprocess.run(['/bin/bash', script, DATASET])
     if result.returncode != 0:
         # The Docker SDK has a known race condition: containers cleaned up between
@@ -37,10 +37,10 @@ def build_images():
         # after all instances have already been evaluated, so the build output is
         # intact.  Treat exit code 1 as a soft warning; any other code is a hard failure.
         if result.returncode == 1:
-            print("WARNING: build_images.sh exited with code 1 (possible benign Docker race condition). "
+            print("WARNING: build_dataset.sh exited with code 1 (possible benign Docker race condition). "
                   "Build stage completed.", file=sys.stderr)
         else:
-            print(f"ERROR: build_images.sh failed with exit code {result.returncode}.", file=sys.stderr)
+            print(f"ERROR: build_dataset.sh failed with exit code {result.returncode}.", file=sys.stderr)
             sys.exit(result.returncode)
 
 
@@ -63,7 +63,7 @@ def filter_build():
 
 
 def main():
-    build_images()
+    build_dataset()
     filter_build()
     print("\n--- Done ---")
     print("Buildable dataset written to: data/gradle_benchmark_dataset_buildable.json")

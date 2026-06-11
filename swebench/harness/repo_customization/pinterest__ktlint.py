@@ -1,6 +1,8 @@
 from swebench.harness.constants.kotlin_base import (
     KOTLIN_LOGS_COLLECTOR_SCRIPT,
     SPECS_KOTLIN_LIBRARY,
+    WARM_TEST_DEPENDENCIES_CMD,
+    WARM_TEST_DEPENDENCIES_SCRIPT,
     _GRADLE_JAVA24_HOME,
     _KAPT_MODULE_FLAGS,
 )
@@ -51,18 +53,18 @@ SPECS = {
             "chmod +x /root/kotlin_logs_collector.sh",
             _STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
+            WARM_TEST_DEPENDENCIES_SCRIPT,
         ],
         "install": [
             f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && chmod +x gradlew',
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== JAVA_HOME ===' && echo \"JAVA_HOME=${JAVA_HOME:-not set}\" && java -version 2>&1 | head -1 && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && '
+            + WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew build -x test",
         ],
         "test_cmd": [
             f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && chmod +x gradlew',
             f'export JAVA_HOME={_GRADLE_JAVA24_HOME} && export PATH="$JAVA_HOME/bin:$PATH" && ./gradlew test',
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }

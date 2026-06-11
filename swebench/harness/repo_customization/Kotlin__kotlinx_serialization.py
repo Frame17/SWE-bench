@@ -1,4 +1,7 @@
-from swebench.harness.constants.kotlin_base import SPECS_KOTLIN_LIBRARY
+from swebench.harness.constants.kotlin_base import (
+    SPECS_KOTLIN_LIBRARY,
+    WARM_TEST_DEPENDENCIES_CMD,
+)
 
 # kover verification tasks must be excluded from both build and test.
 SPECS = {
@@ -7,14 +10,12 @@ SPECS = {
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew build -x test -x koverVerify -x koverCachedVerify -x koverVerifyHocon",
         ],
         "test_cmd": [
             "chmod +x gradlew",
             "./gradlew test -x koverVerify -x koverCachedVerify -x koverVerifyHocon",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }
