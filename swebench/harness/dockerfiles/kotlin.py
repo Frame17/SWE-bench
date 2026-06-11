@@ -77,12 +77,17 @@ RUN bash -c "source /root/.sdkman/bin/sdkman-init.sh && \
     sdk install gradle 9.3.1 && \
     sdk default gradle 9.3.1"
 
-# Pre-warm Gradle wrapper distributions referenced in the dataset.
-# The script is generated from gradle_distribution_url fields in the dataset.
-COPY ./gradle_warmup.sh /tmp/gradle_warmup.sh
-RUN bash /tmp/gradle_warmup.sh && rm -f /tmp/gradle_warmup.sh
-
+# Normalize GRADLE_USER_HOME before any Gradle warmup so that all wrapper
+# distributions, module caches, and transform caches live under /root/.gradle.
 ENV GRADLE_USER_HOME=/root/.gradle
+
+# The gradle base image ships /root/.gradle as a symlink into the
+# VOLUME /home/gradle/.gradle. Docker discards build-time writes to volume
+# paths, so anything Gradle caches under GRADLE_USER_HOME during a RUN
+# (wrapper dist, module/transform caches, gradle.properties) would be lost
+# from the committed image. Replace the symlink with a real directory so the
+# warmup and gradle.properties persist into the base/env/instance images.
+RUN rm -f /root/.gradle && mkdir -p /root/.gradle
 
 RUN $JAVA_HOME/bin/keytool -importkeystore -noprompt -trustcacerts \
   -srckeystore /etc/ssl/certs/java/cacerts \
@@ -120,6 +125,8 @@ def make_gradle_warmup_script(distribution_urls: list[str]) -> str:
     lines = [
         "#!/bin/bash",
         "set -euo pipefail",
+        "",
+        'echo "GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}"',
         "",
         "mkdir -p /tmp/gradle-warmup",
         "cd /tmp/gradle-warmup",

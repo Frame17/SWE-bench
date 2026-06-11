@@ -2,6 +2,8 @@ from swebench.harness.constants.kotlin_base import (
     GRADLE_PROPERTIES_SCRIPT,
     KOTLIN_LOGS_COLLECTOR_SCRIPT,
     SPECS_KOTLIN_LIBRARY,
+    WARM_TEST_DEPENDENCIES_CMD,
+    WARM_TEST_DEPENDENCIES_SCRIPT,
 )
 
 # Koin keeps the Gradle wrapper under projects/ (no root gradlew).
@@ -26,19 +28,18 @@ SPECS = {
             "chmod +x /root/kotlin_logs_collector.sh",
             _STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
+            WARM_TEST_DEPENDENCIES_SCRIPT,
         ],
         "install": [
             "cd projects",
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assemble",
         ],
         "test_cmd": [
             "cd projects && chmod +x gradlew",
             "cd projects && ./gradlew test",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }

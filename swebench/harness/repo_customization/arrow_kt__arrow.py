@@ -1,6 +1,7 @@
 from swebench.harness.constants.kotlin_base import (
     GRADLE_PROPERTIES_SCRIPT_LOW_MEM,
     SPECS_KOTLIN_LIBRARY,
+    WARM_TEST_DEPENDENCIES_CMD,
 )
 
 # `build` triggers animalsnifferAndroidMain (missing androidMainClasses task),
@@ -16,6 +17,7 @@ SPECS = {
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assemble",
         ],
     }

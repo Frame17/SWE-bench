@@ -1,6 +1,7 @@
 from swebench.harness.constants.kotlin_base import (
     INSTALL_TEMURIN_23_COMMANDS,
     SPECS_KOTLIN_LIBRARY,
+    WARM_TEST_DEPENDENCIES_CMD,
     _GRADLE_JAVA23_HOME,
     _GRADLE_JAVA24_HOME,
     _KAPT_MODULE_FLAGS,
@@ -38,6 +39,7 @@ SPECS = {
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assemble",
         ],
     }

@@ -1,9 +1,6 @@
-# --add-exports and --add-opens flags required for KAPT compatibility with JDK 17+.
-# KAPT accesses internal javac APIs (com.sun.tools.javac.*) which are encapsulated
-# by the Java module system starting in JDK 17. Without these, KAPT tasks fail with:
-#   IllegalAccessError: module jdk.compiler does not export com.sun.tools.javac.util
-# --add-exports: allows direct access to the package's public types
-# --add-opens:   additionally allows deep reflective access
+# --add-exports/--add-opens for KAPT + JDK 17+: KAPT accesses internal
+# com.sun.tools.javac.* APIs encapsulated by the module system; without these,
+# KAPT tasks fail with IllegalAccessError on jdk.compiler packages.
 _KAPT_JAVAC_PACKAGES = [
     "com.sun.tools.javac.api",
     "com.sun.tools.javac.code",
@@ -36,17 +33,10 @@ _KAPT_MODULE_FLAGS = " ".join(
     ]
 )
 
-# Script that (re-)creates /root/.gradle/gradle.properties with the KAPT
-# module-access flags.  This runs inside setup_repo.sh so it executes during
-# the *instance* image build — which is always freshly built — rather than
-# relying on a potentially stale/cached env image layer.
-# Memory notes: the Gradle daemon and Kotlin daemon each run as separate JVMs.
-# With both at -Xmx12g the combined footprint (~26 GB) easily exceeds typical
-# Docker container memory limits and the OOM killer terminates the daemon
-# ("Gradle build daemon disappeared unexpectedly").  6 GB each + 512 MB
-# metaspace keeps the combined ceiling around 14 GB, which fits most build
-# hosts while still being ample for KAPT / native / desugar workloads.
-# workers.max=2 reduces parallel task memory pressure further.
+# Writes /root/.gradle/gradle.properties with KAPT module-access flags. Runs in
+# setup_repo.sh (instance build) to avoid stale cached env layers.
+# Heap limits: Gradle + Kotlin daemons at -Xmx6g each cap combined use at ~14 GB,
+# avoiding OOM kills seen at -Xmx12g each. workers.max=2 further limits peak.
 GRADLE_PROPERTIES_SCRIPT = (
     "mkdir -p /root/.gradle && "
     'printf "%s\\n"'
@@ -205,23 +195,47 @@ echo "STATIC VERIFICATION SUCCESS"
 STATIC_VERIFICATION_EOF
 """
 
+# Gradle init script: pre-resolves ALL resolvable configurations at image-build time via a
+# `projectsEvaluated` hook + lenient artifactView. Warms every config (not just test*) because
+# compile/KSP/KAPT classpaths need warming too. Lenient mode skips unresolvable Android variant
+# configs without failing. Applied via `-I` to `test --dry-run` so config-time dep resolution
+# by plugins (e.g. AboutLibraries) is also covered — see WARM_TEST_DEPENDENCIES_CMD.
+WARM_TEST_DEPENDENCIES_SCRIPT = r"""cat > /root/gradle_resolve_all.init.gradle << 'WARM_DEPS_EOF'
+gradle.projectsEvaluated {
+    rootProject.allprojects { proj ->
+        // Snapshot configs before resolving: resolving lazily creates new Android variant
+        // configs (DependenciesMetadata, KSP/KAPT classpaths, etc.) that mutate
+        // ConfigurationContainer mid-iteration, throwing ConcurrentModificationException.
+        def resolvable = new ArrayList(proj.configurations.matching { it.canBeResolved })
+        resolvable.each { cfg ->
+            try {
+                // Lenient artifactView downloads everything resolvable and ignores
+                // unresolvable variants instead of throwing on the whole config.
+                cfg.incoming.artifactView { it.lenient = true }.files.each { f -> f }
+            } catch (Exception e) {
+                proj.logger.lifecycle("resolve-all: skipped ${proj.path}:${cfg.name} - ${e.message}")
+            }
+        }
+    }
+}
+WARM_DEPS_EOF
+"""
+
+# Best-effort warm-up (see WARM_TEST_DEPENDENCIES_SCRIPT): `test --dry-run` + init script in
+# one pass. Downloads the Gradle wrapper dist, configures the real `test` task graph
+# (triggering config-time dep resolution by plugins like AboutLibraries), and executes no
+# tasks. The `-I` init script forces all resolvable artifact downloads.
+# `--continue || true` ensures per-project failures and warming errors never break the build.
+WARM_TEST_DEPENDENCIES_CMD = (
+    "./gradlew --no-daemon --continue test --dry-run "
+    "-I /root/gradle_resolve_all.init.gradle || true"
+)
+
 # ---------- Generic spec categories ----------
 
-# All Kotlin library / multiplatform builds are pinned to x86_64.
-#
-# Why: Kotlin/Native ships prebuilt toolchain binaries
-# (kotlin-native-prebuilt-<version>-<host>.tar.gz) that the Kotlin Gradle
-# plugin downloads during :commonizeNativeDistribution and similar tasks.
-# JetBrains publishes the linux-x86_64 prebuilt to Maven Central, but the
-# linux-aarch64 prebuilt is NOT on Maven Central — so the build fails on
-# arm64 hosts (Apple Silicon, ARM Linux runners) with:
-#   "Could not find kotlin-native-prebuilt-<v>-linux-aarch64.tar.gz"
-# This affects every Kotlin Multiplatform project we've tested in the
-# benchmark, regardless of Kotlin version (we've reproduced it on 2.1.0).
-#
-# Pinning to x86_64 here means Docker uses QEMU emulation transparently
-# on arm64 hosts; the Gradle plugin then downloads the linux-x86_64
-# prebuilt (which Maven Central does have) and the build proceeds.
+# Pinned to x86_64: Kotlin/Native's linux-aarch64 prebuilt is absent from Maven Central,
+# so KMP builds fail on arm64 with "Could not find kotlin-native-prebuilt-*-linux-aarch64".
+# Pinning forces QEMU emulation on arm64 and downloads the linux-x86_64 prebuilt instead.
 SPECS_KOTLIN_LIBRARY = {
     "1.0.0": {
         "docker_specs": {"java_version": "17", "arch": "x86_64"},
@@ -231,18 +245,17 @@ SPECS_KOTLIN_LIBRARY = {
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
+            WARM_TEST_DEPENDENCIES_SCRIPT,
         ],
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew build -x test",
         ],
         "test_cmd": [
             "chmod +x gradlew",
             "./gradlew test",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }
@@ -256,20 +269,19 @@ SPECS_KOTLIN_ANDROID = {
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
+            WARM_TEST_DEPENDENCIES_SCRIPT,
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
             'rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"',
         ],
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false",
         ],
         "test_cmd": [
             "chmod +x gradlew",
             "./gradlew test",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }
@@ -283,29 +295,25 @@ SPECS_KOTLIN_ANDROID_21 = {
             "chmod +x /root/kotlin_logs_collector.sh",
             STATIC_VERIFICATION_SCRIPT,
             "chmod +x /root/static_verification.sh",
+            WARM_TEST_DEPENDENCIES_SCRIPT,
             "mkdir -p ~/.android && touch ~/.android/repositories.cfg",
             'rm -f debug.keystore && keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"',
         ],
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assembleDebug -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false",
         ],
         "test_cmd": [
             "chmod +x gradlew",
             "./gradlew test",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }
 
-# Android repos that bring in Kotlin/Native via Kotlin Multiplatform with
-# iOS or Native targets, hitting the same missing linux-aarch64 prebuilt
-# issue documented above SPECS_KOTLIN_LIBRARY. SPECS_KOTLIN_ANDROID itself
-# stays host-arch (most pure-Android builds work fine on arm64); use this
-# variant for the few Android repos that need x86_64 + QEMU emulation.
+# Android repos with KMP iOS/Native targets hit the same linux-aarch64 prebuilt gap
+# as SPECS_KOTLIN_LIBRARY. Use this variant for the few that need x86_64 + QEMU.
 SPECS_KOTLIN_ANDROID_X86 = {
     "1.0.0": {
         **SPECS_KOTLIN_ANDROID["1.0.0"],
@@ -325,6 +333,7 @@ SPECS_KOTLIN_LIBRARY_KMP_BROWSER = {
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            WARM_TEST_DEPENDENCIES_CMD,
             "./gradlew assemble",
         ],
     }

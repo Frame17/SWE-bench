@@ -34,13 +34,15 @@ Output: `data/gradle_benchmark_dataset_buildable.json`
 
 ---
 
-## Building images directly
+## Building the dataset directly
 
-Use `build_images.sh` when you want to invoke `swebench.harness.prepare_images` against a specific dataset without running the full pipeline:
+Use `build_dataset.sh` when you want to (1) extend a dataset with a per-task `test_cmd` field and (2) build its Docker images, without running the full pipeline:
 
 ```bash
-./build_images.sh [DATASET_PATH] [extra prepare_images flags]
+./build_dataset.sh [DATASET_PATH] [extra prepare_images flags]
 ```
+
+The script first runs `add_test_cmd.py` to write a `test_cmd` field into each task **in place** (resolved from `MAP_REPO_VERSION_TO_SPECS`, including `repo_customization` overrides), then invokes `swebench.harness.prepare_images`.
 
 Anything after the dataset path is forwarded to `prepare_images` verbatim. Useful flags:
 
@@ -53,13 +55,13 @@ Anything after the dataset path is forwarded to `prepare_images` verbatim. Usefu
 Example — retry every failed build in the dataset:
 
 ```bash
-./build_images.sh data/gradle_benchmark_dataset.json --rebuild_failures
+./build_dataset.sh data/gradle_benchmark_dataset.json --rebuild_failures
 ```
 
 Example — retry one specific failed build:
 
 ```bash
-./build_images.sh data/gradle_benchmark_dataset.json \
+./build_dataset.sh data/gradle_benchmark_dataset.json \
   --rebuild_failures \
   --instance_ids Kotlin__kotlinx.serialization-2946
 ```
@@ -77,7 +79,8 @@ The build cache (`data/build_cache.json`) records `"success"` or `"fail"` per in
 | File | Purpose |
 |---|---|
 | `pipeline.py` | Runs the full automated pipeline (steps 1–2) |
-| `build_images.sh` | Invokes `swebench.harness.prepare_images` with project-specific flags; forwards extra args |
+| `build_dataset.sh` | Extends the dataset with a per-task `test_cmd` field (`add_test_cmd.py`), then invokes `swebench.harness.prepare_images`; forwards extra args |
+| `add_test_cmd.py` | Adds a `test_cmd` field to each task, resolved from `MAP_REPO_VERSION_TO_SPECS` |
 | `run_evaluation.sh` | Manual helper: runs `swebench.harness.run_evaluation` against a dataset |
 | `data/gradle_benchmark_dataset.json` | Raw input dataset |
 | `data/gradle_benchmark_dataset_buildable.json` | Output: instances with successful Docker builds |

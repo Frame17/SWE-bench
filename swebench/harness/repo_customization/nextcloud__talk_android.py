@@ -9,14 +9,15 @@ SPECS = {
         "install": [
             "chmod +x gradlew",
             "echo '=== GRADLE_USER_HOME ===' && echo \"GRADLE_USER_HOME=${GRADLE_USER_HOME:-not set}\" && echo '=== gradle.properties ===' && cat ${GRADLE_USER_HOME:-/root/.gradle}/gradle.properties && echo '=== END gradle.properties ==='",
+            # Warm test dependencies with verification disabled, matching the build/test steps.
+            "./gradlew --no-daemon --version --dependency-verification=off && "
+            "./gradlew --no-daemon --continue help "
+            "-I /root/gradle_resolve_all.init.gradle --dependency-verification=off || true",
             "./gradlew assembleDebug --dependency-verification=off -Pandroid.base.ignoreExtraTranslations=true -Pandroid.lintOptions.abortOnError=false",
         ],
         "test_cmd": [
             "chmod +x gradlew",
             "./gradlew test --dependency-verification=off",
-            "/bin/bash /root/static_verification.sh",
-            "/bin/bash /root/kotlin_logs_collector.sh",
-            "cat /testbed/reports/junit/all-testsuites.xml",
         ],
     }
 }
