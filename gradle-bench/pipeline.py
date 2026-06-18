@@ -9,7 +9,7 @@ Input:  data/gradle_benchmark_dataset.json
 Output: data/gradle_benchmark_dataset_buildable.json
 
 Steps:
-  build_dataset — Extend tasks with test_cmd + build Docker images (build_dataset.sh)
+  build_dataset — Extend tasks with test_cmd + image_name + build Docker images (build_dataset.sh)
   filter_build  — Keep instances marked "success" in build_cache.json
 
 Usage:
@@ -28,7 +28,7 @@ OUTPUT_DATASET = os.path.join(DATA_DIR, 'gradle_benchmark_dataset_buildable.json
 
 
 def build_dataset():
-    print("\n--- build_dataset: Extend tasks with test_cmd + build Docker images ---")
+    print("\n--- build_dataset: Extend tasks with test_cmd + image_name + build Docker images ---")
     script = os.path.join(BENCH_DIR, 'build_dataset.sh')
     result = subprocess.run(['/bin/bash', script, DATASET])
     if result.returncode != 0:
