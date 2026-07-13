@@ -1,11 +1,13 @@
-from swebench.harness.constants.kotlin_base import (
+from swebench.harness.constants.jvm_base import (
     INSTALL_TEMURIN_23_COMMANDS,
-    SPECS_KOTLIN_LIBRARY,
+    SPECS_JVM_LIBRARY_17,
     WARM_TEST_DEPENDENCIES_CMD,
     _GRADLE_JAVA23_HOME,
     _GRADLE_JAVA24_HOME,
     _KAPT_MODULE_FLAGS,
 )
+
+REPO = "slackhq/circuit"
 
 # Tell Gradle where to find JDK 23 (Temurin) and JDK 24 (openjdk-24 from apt)
 # so it can auto-detect them.  Disable auto-download since both are pre-installed.
@@ -30,11 +32,11 @@ _GRADLE_PROPERTIES_SCRIPT = (
 
 SPECS = {
     "1.0.0": {
-        **SPECS_KOTLIN_LIBRARY["1.0.0"],
+        **SPECS_JVM_LIBRARY_17["1.0.0"],
         "pre_install": [
             *INSTALL_TEMURIN_23_COMMANDS,
             _GRADLE_PROPERTIES_SCRIPT,
-            *SPECS_KOTLIN_LIBRARY["1.0.0"]["pre_install"][1:],
+            *SPECS_JVM_LIBRARY_17["1.0.0"]["pre_install"][1:],
         ],
         "install": [
             "chmod +x gradlew",
