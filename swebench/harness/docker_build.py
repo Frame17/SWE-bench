@@ -26,6 +26,104 @@ from swebench.harness.test_spec.test_spec import (
 from swebench.harness.utils import ansi_escape, run_threadpool
 
 
+# ---- Local dep-cache: hostnames whose traffic gets rewritten to nginx
+# via --add-host at image build time when SWEBENCH_DEP_CACHE_ENABLED=1.
+# Kept in sync with infra/dep-cache/nginx/nginx.conf server_name blocks
+# in the PARENT repo. Five distinct hostnames; dl.google.com serves
+# both Google Maven at /dl/android/maven2/ AND Android SDK at
+# /android/repository/ via location-specific rewrites in nginx.
+_DEP_CACHE_HOSTS = (
+    "repo1.maven.org",
+    "repo.maven.apache.org",
+    "dl.google.com",
+    "plugins.gradle.org",
+    "services.gradle.org",
+)
+
+
+def _dep_cache_enabled() -> bool:
+    import os
+    return os.environ.get("SWEBENCH_DEP_CACHE_ENABLED") == "1"
+
+
+_DEP_CACHE_BUILDER_NAME = "dep-cache-builder"
+_DEP_CACHE_NETWORK = "dep-cache_default"
+_DEP_CACHE_NGINX_CONTAINER = "dep-cache-nginx"
+
+
+def _ensure_dep_cache_buildx_builder() -> None:
+    """Docker Desktop's default buildx builder uses the `docker` driver,
+    which silently DROPS --add-host at buildx-build time. That routes
+    base-image downloads to the real internet, defeating the point of
+    enabling the dep-cache at build time.
+
+    We use a `docker-container`-driver builder instead, but there is a
+    second gotcha: that driver honors --add-host as a flag but does NOT
+    understand the `host-gateway` magic value (host-gateway is resolved
+    by dockerd for regular container-run, not by the isolated BuildKit
+    daemon a docker-container builder spawns). So we ALSO attach the
+    builder to the compose network dep-cache_default and pass nginx's
+    concrete IP as the --add-host target (resolved in the caller via
+    _dep_cache_nginx_ip()).
+
+    Idempotent: if the named builder already exists AND was created
+    with the correct network attachment, do nothing. Otherwise the
+    builder is recreated so the network attachment is fresh. Only
+    invoked when SWEBENCH_DEP_CACHE_ENABLED=1."""
+    inspect = subprocess.run(
+        ["docker", "buildx", "inspect", _DEP_CACHE_BUILDER_NAME],
+        capture_output=True,
+        text=True,
+    )
+    if inspect.returncode == 0 and _DEP_CACHE_NETWORK in inspect.stdout:
+        return
+    # Either missing, or present without the network attachment. Recreate
+    # cleanly so we don't inherit a stale network config.
+    if inspect.returncode == 0:
+        subprocess.run(
+            ["docker", "buildx", "rm", _DEP_CACHE_BUILDER_NAME],
+            capture_output=True,
+            text=True,
+        )
+    subprocess.run(
+        [
+            "docker", "buildx", "create",
+            "--name", _DEP_CACHE_BUILDER_NAME,
+            "--driver", "docker-container",
+            "--driver-opt", f"network={_DEP_CACHE_NETWORK}",
+            "--bootstrap",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _dep_cache_nginx_ip() -> str:
+    """Resolve dep-cache-nginx's IP on the dep-cache_default network so we
+    can pass a concrete --add-host target (docker-container buildx driver
+    doesn't understand `host-gateway`). Fails loudly if nginx isn't
+    running — the wrapper's preflight should have caught that already,
+    but this is a second line of defense."""
+    result = subprocess.run(
+        [
+            "docker", "inspect", _DEP_CACHE_NGINX_CONTAINER,
+            "--format",
+            "{{(index .NetworkSettings.Networks \"" + _DEP_CACHE_NETWORK + "\").IPAddress}}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    ip = result.stdout.strip()
+    if result.returncode != 0 or not ip:
+        raise RuntimeError(
+            f"could not resolve {_DEP_CACHE_NGINX_CONTAINER}'s IP on "
+            f"network {_DEP_CACHE_NETWORK}: exit {result.returncode}, "
+            f"stderr={result.stderr.strip()!r}"
+        )
+    return ip
+
+
 def _is_cross_platform_build(target_platform: str) -> bool:
     """Return True when the build targets a platform different from the host.
 
@@ -148,7 +246,17 @@ def build_image(
             f"Building docker image {image_name} in {build_dir} with platform {platform}"
         )
 
-        if _is_cross_platform_build(platform):
+        # Instance images (sweb.eval.*) FROM a local `sweb.env.*` image.
+        # BuildKit's docker-container driver runs an isolated daemon that
+        # can't see the host dockerd's image cache, so those local FROMs
+        # get resolved as Docker Hub lookups and fail with "pull access
+        # denied". Only base + env images are safe on dep-cache-builder.
+        # Instance builds fall back to the default docker driver (which
+        # sees local images fine but silently drops --add-host).
+        is_local_from_image = image_name.startswith("sweb.eval.")
+        use_dep_cache_builder = _dep_cache_enabled() and not is_local_from_image
+
+        if _is_cross_platform_build(platform) or use_dep_cache_builder:
             # The Docker SDK's legacy builder (client.api.build) cannot
             # resolve locally-built images when the target platform differs
             # from the host architecture.  Use ``docker buildx build --load``
@@ -165,6 +273,20 @@ def build_image(
             ]
             if nocache:
                 cmd.append("--no-cache")
+
+            if use_dep_cache_builder:
+                # docker-driver builder silently ignores --add-host at
+                # build-container level. Force a docker-container-driver
+                # builder so BuildKit honors the flag, attached to the
+                # dep-cache_default network so we can reach nginx by IP.
+                # host-gateway is NOT supported by docker-container so we
+                # resolve nginx's actual IP and pass it directly.
+                _ensure_dep_cache_buildx_builder()
+                nginx_ip = _dep_cache_nginx_ip()
+                cmd.extend(["--builder", _DEP_CACHE_BUILDER_NAME])
+                for host in _DEP_CACHE_HOSTS:
+                    cmd.extend(["--add-host", f"{host}:{nginx_ip}"])
+
             cmd.append(str(build_dir))
 
             process = subprocess.Popen(
@@ -305,6 +427,16 @@ def build_base_images(
         # Build the base image (if it does not exist or force rebuild is enabled)
         print(f"Building base image ({image_name})")
         scripts = {"gradle_warmup.sh": warmup_script} if language == "kotlin" else {}
+        # If SWEBENCH_CA_CERT is set, plumb the PEM bytes into the build
+        # context as `ca.crt`. The kotlin base Dockerfile picks this up via
+        # the {ca_install} block wired in get_dockerfile_base(). Validation
+        # (file exists, is a PEM) lives in the single get_ca_cert_pem()
+        # helper so this call path can't disagree with the Dockerfile side.
+        if language == "kotlin":
+            from swebench.harness.dockerfiles.kotlin import get_ca_cert_pem
+            pem = get_ca_cert_pem()  # raises on invalid config; None if unset
+            if pem is not None:
+                scripts["ca.crt"] = pem
         build_image(
             image_name=image_name,
             setup_scripts=scripts,
@@ -415,10 +547,20 @@ def build_env_images(
 
     warmup_script = _collect_gradle_warmup(test_specs)
     args_list = list()
+    # If SWEBENCH_CA_CERT is set, env-image builds also need `ca.crt` in
+    # their build context because the kotlin env-image Dockerfile falls
+    # back to _DOCKERFILE_BASE_KOTLIN (no dedicated _DOCKERFILE_ENV entry
+    # for kotlin exists) and that template's {ca_install} block references
+    # `COPY ca.crt`. Without this plumbing the env build fails with
+    # "ca.crt: not found" at buildx-context transfer time.
+    from swebench.harness.dockerfiles.kotlin import get_ca_cert_pem
+    _ca_pem = get_ca_cert_pem()  # raises on invalid config; None if unset
     for image_name, config in configs_to_build.items():
         scripts = {"setup_env.sh": config["setup_script"]}
         if config.get("language") == "kotlin":
             scripts["gradle_warmup.sh"] = warmup_script
+            if _ca_pem is not None:
+                scripts["ca.crt"] = _ca_pem
         args_list.append(
             (
                 image_name,

@@ -1,3 +1,4 @@
+import os
 import platform as _platform
 
 
@@ -69,7 +70,7 @@ RUN dpkg --add-architecture amd64 && \
   rm -rf /var/lib/apt/lists/*
 
 RUN update-ca-certificates
-
+{ca_install}
 # Install SDKMAN and latest Gradle version (9.3.1)
 # Update these commands as new Gradle versions are released
 RUN curl -s "https://get.sdkman.io" | bash
@@ -111,6 +112,74 @@ RUN yes | sdkmanager --licenses && \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
   "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0" "build-tools;36.0.0"
 """
+
+_CA_INSTALL_BLOCK = """
+# ---- Local dep-cache CA install (SWEBENCH_CA_CERT was set at build time) ----
+COPY ca.crt /usr/local/share/ca-certificates/gradle-swe-bench-cache.crt
+
+RUN update-ca-certificates && \\
+  handled=0; \\
+  for CACERTS in $JAVA_HOME/lib/security/cacerts /usr/lib/jvm/*/lib/security/cacerts; do \\
+    [ -f "$CACERTS" ] || continue; \\
+    if keytool -list -alias gradle-swe-bench-cache \\
+         -keystore "$CACERTS" -storepass changeit >/dev/null 2>&1; then \\
+      handled=$((handled+1)); \\
+      continue; \\
+    fi; \\
+    keytool -importcert -noprompt -trustcacerts \\
+      -alias gradle-swe-bench-cache \\
+      -file /usr/local/share/ca-certificates/gradle-swe-bench-cache.crt \\
+      -keystore "$CACERTS" -storepass changeit; \\
+    handled=$((handled+1)); \\
+  done; \\
+  if [ "$handled" -eq 0 ]; then \\
+    echo "no JVM cacerts updated — refusing to ship an image without JVM trust" >&2; \\
+    exit 1; \\
+  fi
+# ---- end local dep-cache CA install ----
+"""
+
+
+def get_ca_cert_pem() -> str | None:
+    """Return the PEM contents of the local dep-cache CA if SWEBENCH_CA_CERT
+    points at one, otherwise None.
+
+    Env-var-gated so this is opt-in. When the env var IS set, validation is
+    strict — misconfiguration raises instead of being silently ignored:
+
+      * unset            → None (feature off)
+      * set + missing    → FileNotFoundError
+      * set + not a PEM  → ValueError
+
+    Single source of truth so ``docker_build.build_base_images`` (which
+    plumbs the bytes into the docker build context) and
+    ``get_ca_install_block`` (which emits the Dockerfile block) cannot
+    disagree.
+    """
+    cert = os.environ.get("SWEBENCH_CA_CERT")
+    if not cert:
+        return None
+    if not os.path.isfile(cert):
+        raise FileNotFoundError(
+            f"SWEBENCH_CA_CERT={cert!r} does not exist or is not a regular file"
+        )
+    with open(cert, "rb") as fh:
+        data = fh.read()
+    if b"BEGIN CERTIFICATE" not in data:
+        raise ValueError(
+            f"SWEBENCH_CA_CERT={cert!r} is not a PEM certificate "
+            "(no 'BEGIN CERTIFICATE' marker found)"
+        )
+    return data.decode("ascii")
+
+
+def get_ca_install_block() -> str:
+    """Return the Dockerfile lines that install the local CA into system
+    and JVM trust stores, or "" if the CA is not configured. Callers must
+    also arrange for ``ca.crt`` to appear in the docker build context —
+    see ``docker_build.build_base_images``."""
+    return _CA_INSTALL_BLOCK if get_ca_cert_pem() is not None else ""
+
 
 def make_gradle_warmup_script(distribution_urls: list[str]) -> str:
     """
