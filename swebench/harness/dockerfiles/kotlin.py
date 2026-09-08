@@ -1,5 +1,10 @@
 import platform as _platform
 
+from swebench.harness.dependency_gateway import (
+    DEPENDENCY_GATEWAY_TRUST_VERSION,
+    dependency_gateway_ca_pem,
+)
+
 
 def get_host_arch() -> str:
     """Detect the host CPU architecture.
@@ -69,6 +74,7 @@ RUN dpkg --add-architecture amd64 && \
   rm -rf /var/lib/apt/lists/*
 
 RUN update-ca-certificates
+{dependency_gateway_ca_install}
 
 # Install SDKMAN and latest Gradle version (9.3.1)
 # Update these commands as new Gradle versions are released
@@ -111,6 +117,31 @@ RUN yes | sdkmanager --licenses && \
   "build-tools;30.0.3" "build-tools;31.0.0" "build-tools;32.0.0" \
   "build-tools;33.0.0" "build-tools;33.0.1" "build-tools;34.0.0" "build-tools;35.0.0" "build-tools;36.0.0"
 """
+
+_DEPENDENCY_GATEWAY_CA_INSTALL = """
+COPY gateway-ca.crt /usr/local/share/ca-certificates/kotlin-dependency-gateway.crt
+RUN java_cacerts="$(find "$JAVA_HOME" -type f -path '*/lib/security/cacerts' -print -quit)" \\
+ && test -n "$java_cacerts" \\
+ && update-ca-certificates \\
+ && ("$JAVA_HOME/bin/keytool" -delete -alias kotlin-dependency-gateway -keystore "$java_cacerts" -storepass changeit 2>/dev/null || true) \\
+ && "$JAVA_HOME/bin/keytool" -importcert -noprompt -trustcacerts -alias kotlin-dependency-gateway -file /usr/local/share/ca-certificates/kotlin-dependency-gateway.crt -keystore "$java_cacerts" -storepass changeit \\
+ && mkdir -p /usr/local/share/kotlin-dependency-gateway \\
+ && cp "$java_cacerts" /usr/local/share/kotlin-dependency-gateway/cacerts \\
+ && chmod 0644 /usr/local/share/kotlin-dependency-gateway/cacerts
+
+ENV KOTLIN_DEPENDENCY_GATEWAY_TRUSTSTORE=/usr/local/share/kotlin-dependency-gateway/cacerts
+ENV KOTLIN_DEPENDENCY_GATEWAY_TRUST_VERSION={trust_version}
+ENV JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=/usr/local/share/kotlin-dependency-gateway/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+""".format(trust_version=DEPENDENCY_GATEWAY_TRUST_VERSION)
+
+
+def get_dependency_gateway_ca_install() -> str:
+    """Return the CA installation layer when a gateway CA is configured."""
+    return (
+        _DEPENDENCY_GATEWAY_CA_INSTALL
+        if dependency_gateway_ca_pem() is not None
+        else ""
+    )
 
 def make_gradle_warmup_script(distribution_urls: list[str]) -> str:
     """

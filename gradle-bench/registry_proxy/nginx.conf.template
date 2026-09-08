@@ -1,0 +1,104 @@
+upstream maven_central_upstream {
+    server ${MAVEN_CENTRAL_UPSTREAM};
+    keepalive 32;
+}
+
+upstream gradle_plugin_portal_upstream {
+    server ${GRADLE_PLUGIN_PORTAL_UPSTREAM};
+    keepalive 32;
+}
+
+upstream reposilite_upstream {
+    server maven.reposilite.com:443;
+    keepalive 16;
+}
+
+log_format registry_gateway '$remote_addr host=$host request="$request" status=$status upstream=$upstream_addr upstream_status=$upstream_status';
+access_log /dev/stdout registry_gateway;
+
+server {
+    listen 443 ssl;
+    server_name repo.maven.apache.org repo1.maven.org;
+    ssl_certificate /etc/nginx/tls/tls.crt;
+    ssl_certificate_key /etc/nginx/tls/tls.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = /maven2 { return 308 /maven2/; }
+    location /maven2/ {
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host ${MAVEN_CENTRAL_UPSTREAM_HOST};
+        include /etc/nginx/upstream-headers.conf;
+        proxy_ssl_name ${MAVEN_CENTRAL_UPSTREAM_HOST};
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/tls/upstream-ca.crt;
+        proxy_pass https://maven_central_upstream${MAVEN_CENTRAL_UPSTREAM_PATH}/;
+    }
+    location / { return 404; }
+}
+
+server {
+    listen 443 ssl;
+    server_name plugins.gradle.org;
+    ssl_certificate /etc/nginx/tls/tls.crt;
+    ssl_certificate_key /etc/nginx/tls/tls.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = /m2 { return 308 /m2/; }
+    location /m2/ {
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host ${GRADLE_PLUGIN_PORTAL_UPSTREAM_HOST};
+        include /etc/nginx/upstream-headers.conf;
+        proxy_ssl_name ${GRADLE_PLUGIN_PORTAL_UPSTREAM_HOST};
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/tls/upstream-ca.crt;
+        proxy_pass https://gradle_plugin_portal_upstream${GRADLE_PLUGIN_PORTAL_UPSTREAM_PATH}/;
+    }
+    location / { return 404; }
+}
+
+server {
+    listen 443 ssl;
+    server_name maven.reposilite.com;
+    ssl_certificate /etc/nginx/tls/tls.crt;
+    ssl_certificate_key /etc/nginx/tls/tls.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = /maven-central { return 308 /maven-central/; }
+    location /maven-central/ {
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host ${MAVEN_CENTRAL_UPSTREAM_HOST};
+        include /etc/nginx/upstream-headers.conf;
+        proxy_ssl_name ${MAVEN_CENTRAL_UPSTREAM_HOST};
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/tls/upstream-ca.crt;
+        proxy_pass https://maven_central_upstream${MAVEN_CENTRAL_UPSTREAM_PATH}/;
+    }
+    location / {
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host maven.reposilite.com;
+        proxy_ssl_name maven.reposilite.com;
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/tls/upstream-ca.crt;
+        proxy_pass https://reposilite_upstream;
+    }
+}
+
+server {
+    listen 8080;
+    location = /healthz {
+        access_log off;
+        return 204;
+    }
+}

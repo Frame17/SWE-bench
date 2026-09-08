@@ -17,6 +17,11 @@ from swebench.harness.constants import (
     INSTANCE_IMAGE_BUILD_DIR,
     UTF8,
 )
+from swebench.harness.dependency_gateway import (
+    add_dependency_gateway_cache_key,
+    dependency_gateway_ca_pem,
+    dependency_gateway_extra_hosts,
+)
 from swebench.harness.docker_utils import cleanup_container, remove_image
 from swebench.harness.test_spec.test_spec import (
     get_test_specs_from_dataset,
@@ -148,6 +153,7 @@ def build_image(
             f"Building docker image {image_name} in {build_dir} with platform {platform}"
         )
 
+        extra_hosts = dependency_gateway_extra_hosts()
         if _is_cross_platform_build(platform):
             # The Docker SDK's legacy builder (client.api.build) cannot
             # resolve locally-built images when the target platform differs
@@ -165,6 +171,8 @@ def build_image(
             ]
             if nocache:
                 cmd.append("--no-cache")
+            for host, address in extra_hosts.items():
+                cmd.extend(["--add-host", f"{host}={address}"])
             cmd.append(str(build_dir))
 
             process = subprocess.Popen(
@@ -193,6 +201,7 @@ def build_image(
                 decode=True,
                 platform=platform,
                 nocache=nocache,
+                extra_hosts=extra_hosts or None,
             )
 
             # Log the build process continuously
@@ -284,6 +293,7 @@ def build_base_images(
         instance_image_tag=instance_image_tag,
         env_image_tag=env_image_tag,
     )
+    add_dependency_gateway_cache_key(test_specs)
     warmup_script = _collect_gradle_warmup(test_specs)  # mutates docker_specs, must run before first key access
     base_images = {
         x.base_image_key: (x.base_dockerfile, x.platform, x.language) for x in test_specs
@@ -305,6 +315,10 @@ def build_base_images(
         # Build the base image (if it does not exist or force rebuild is enabled)
         print(f"Building base image ({image_name})")
         scripts = {"gradle_warmup.sh": warmup_script} if language == "kotlin" else {}
+        if language == "kotlin":
+            ca_pem = dependency_gateway_ca_pem()
+            if ca_pem is not None:
+                scripts["gateway-ca.crt"] = ca_pem
         build_image(
             image_name=image_name,
             setup_scripts=scripts,
@@ -339,6 +353,7 @@ def get_env_configs_to_build(
         instance_image_tag=instance_image_tag,
         env_image_tag=env_image_tag,
     )
+    add_dependency_gateway_cache_key(test_specs)
     _collect_gradle_warmup(test_specs)  # mutates docker_specs before any key access
 
     for test_spec in test_specs:
@@ -398,6 +413,7 @@ def build_env_images(
         instance_image_tag=instance_image_tag,
         env_image_tag=env_image_tag,
     )
+    add_dependency_gateway_cache_key(test_specs)
     _collect_gradle_warmup(test_specs)  # mutates docker_specs before any key access
     if force_rebuild:
         for key in {x.env_image_key for x in test_specs}:
@@ -414,11 +430,14 @@ def build_env_images(
     print(f"Total environment images to build: {len(configs_to_build)}")
 
     warmup_script = _collect_gradle_warmup(test_specs)
+    ca_pem = dependency_gateway_ca_pem()
     args_list = list()
     for image_name, config in configs_to_build.items():
         scripts = {"setup_env.sh": config["setup_script"]}
         if config.get("language") == "kotlin":
             scripts["gradle_warmup.sh"] = warmup_script
+            if ca_pem is not None:
+                scripts["gateway-ca.crt"] = ca_pem
         args_list.append(
             (
                 image_name,
@@ -472,6 +491,7 @@ def build_instance_images(
             dataset,
         )
     )
+    add_dependency_gateway_cache_key(test_specs)
     if force_rebuild:
         for spec in test_specs:
             remove_image(client, spec.instance_image_key, "quiet")

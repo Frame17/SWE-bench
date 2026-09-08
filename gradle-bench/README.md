@@ -42,7 +42,16 @@ Use `build_dataset.sh` when you want to (1) extend a dataset with per-task `test
 ./build_dataset.sh [DATASET_PATH] [extra prepare_images flags]
 ```
 
+The default dataset is `data/gradle_benchmark_dataset_representative_100.json`.
+Final images are tagged under `gradlebench/`; shared base and environment images
+remain local.
+
 The script first runs `augment_dataset.py` to write `test_cmd` and `image_name` fields into each task **in place** (resolved from `MAP_REPO_VERSION_TO_SPECS`, including `repo_customization` overrides), then invokes `swebench.harness.prepare_images`.
+
+The script also starts the transparent dependency gateway in `registry_proxy/`
+unless `DEPENDENCY_GATEWAY` is already set. Set it to an existing gateway
+address to use that service, or to an empty value to disable routing. The local
+gateway remains running after the build.
 
 Anything after the dataset path is forwarded to `prepare_images` verbatim. Useful flags:
 
@@ -51,6 +60,7 @@ Anything after the dataset path is forwarded to `prepare_images` verbatim. Usefu
 | `--instance_ids ID1 ID2 …` | Build only the listed instances (rest of the dataset is ignored). |
 | `--force_rebuild true` | Rebuild every instance regardless of cache state — slow; mainly for full refreshes. |
 | `--rebuild_failures` | **Build every instance that doesn't have a confirmed-good image** in the local Docker daemon. Covers cached failures, stale successes (cache says success but image is gone — e.g. after `docker image prune`), and instances not in the cache at all. Cached successes whose image is present are still skipped. Less broad than `--force_rebuild` (which rebuilds everything regardless of cache). |
+| `--push` | Push selected successful final images after building. |
 
 Example — retry every failed build in the dataset:
 
@@ -66,6 +76,15 @@ Example — retry one specific failed build:
   --instance_ids Kotlin__kotlinx.serialization-2946
 ```
 
+Example — build and publish one image:
+
+```bash
+./build_dataset.sh --rebuild_failures --push \
+  --instance_ids Kotlin__kotlinx.serialization-2946
+```
+
+Without `--push`, no image is uploaded.
+
 The build cache (`data/build_cache.json`) records `"success"` or `"fail"` per instance. The script also surfaces:
 
 - Each existing image it found and is reusing (`Found existing image: …`).
@@ -79,7 +98,8 @@ The build cache (`data/build_cache.json`) records `"success"` or `"fail"` per in
 | File | Purpose |
 |---|---|
 | `pipeline.py` | Runs the full automated pipeline (steps 1–2) |
-| `build_dataset.sh` | Extends the dataset with per-task `test_cmd` and `image_name` fields (`augment_dataset.py`), then invokes `swebench.harness.prepare_images`; forwards extra args |
+| `build_dataset.sh` | Starts the dependency gateway, extends the dataset with `test_cmd` and remote `image_name` fields, then builds and optionally publishes images |
+| `registry_proxy/` | TLS dependency gateway for Maven Central, the Gradle Plugin Portal, and Reposilite |
 | `augment_dataset.py` | Adds `test_cmd` and `image_name` fields to each task, resolved from `MAP_REPO_VERSION_TO_SPECS` |
 | `run_evaluation.sh` | Manual helper: runs `swebench.harness.run_evaluation` against a dataset |
 | `data/gradle_benchmark_dataset.json` | Raw input dataset |

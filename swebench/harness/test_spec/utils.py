@@ -28,6 +28,7 @@ def make_repo_script_list_common(
     This is the setup script for the instance image.
     """
     setup_commands = [
+        "git config --global http.version HTTP/1.1",
         f"git clone -o origin https://github.com/{repo} {repo_directory}",
         f"chmod -R 777 {repo_directory}",  # So nonroot user can run tests
         f"cd {repo_directory}",

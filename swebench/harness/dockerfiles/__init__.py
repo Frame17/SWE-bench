@@ -13,6 +13,7 @@ from swebench.harness.dockerfiles.java import (
 from swebench.harness.dockerfiles.kotlin import (
     _DOCKERFILE_BASE_KOTLIN,
     _DOCKERFILE_INSTANCE_KOTLIN,
+    get_dependency_gateway_ca_install,
     get_host_arch,
 )
 from swebench.harness.dockerfiles.javascript import (
@@ -82,6 +83,11 @@ def get_dockerfile_base(platform, arch, language, **kwargs):
         del kwargs["_variant"]
         return _DOCKERFILE_BASE_JS_2.format(platform=platform, **kwargs)
 
+    if language == "kotlin":
+        kwargs.setdefault(
+            "dependency_gateway_ca_install", get_dependency_gateway_ca_install()
+        )
+
     return _DOCKERFILE_BASE[language].format(
         platform=platform, conda_arch=conda_arch, **kwargs
     )
@@ -95,6 +101,11 @@ def get_dockerfile_env(platform, arch, language, base_image_key, **kwargs):
     if "_variant" in kwargs and kwargs["_variant"] == "js_2":
         del kwargs["_variant"]
         return _DOCKERFILE_BASE_JS_2.format(platform=platform, **kwargs)
+
+    if language == "kotlin":
+        kwargs.setdefault(
+            "dependency_gateway_ca_install", get_dependency_gateway_ca_install()
+        )
 
     return dockerfile.format(
         platform=platform, arch=arch, base_image_key=base_image_key, **kwargs

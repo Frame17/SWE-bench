@@ -180,3 +180,5 @@ outputs/
 .github/copilot-instructions.md
 gradle-bench/data/*
 !gradle-bench/data/build_cache.json
+gradle-bench/registry_proxy/.state/
+gradle-bench/registry_proxy/upstream-headers.local.conf
