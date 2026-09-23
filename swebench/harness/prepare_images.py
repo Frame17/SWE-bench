@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from swebench.harness.constants import KEY_INSTANCE_ID, LATEST, MAP_REPO_VERSION_TO_SPECS
 from swebench.harness.docker_build import build_instance_images
 from swebench.harness.docker_utils import list_images
+from swebench.harness.push_images import push_instance_images
 from swebench.harness.test_spec.test_spec import make_test_spec
 from swebench.harness.utils import load_swebench_dataset, str2bool, optional_str
 
@@ -107,6 +108,7 @@ def main(
     env_image_tag,
     cache_path=None,
     rebuild_failures=False,
+    push=False,
 ):
     """
     Build Docker images for the specified instances.
@@ -125,7 +127,13 @@ def main(
             successes whose image is present are still skipped. Useful for
             retrying transient/flaky build failures and filling in any gaps
             without going as broad as --force_rebuild.
+        push (bool): Push selected successful instance images after building.
     """
+    if push and namespace is None:
+        raise ValueError("--push requires a non-empty --namespace")
+    if push and not cache_path:
+        raise ValueError("--push requires --cache_path")
+
     # Set open file limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
@@ -146,6 +154,22 @@ def main(
         dataset = []
     else:
         dataset = load_swebench_dataset(dataset_name, split, instance_ids=instance_ids)
+    publish_dataset = list(dataset)
+
+    def finish(status: int = 0) -> int:
+        if not push:
+            return status
+        specs = [
+            make_test_spec(
+                instance,
+                namespace=namespace,
+                instance_image_tag=tag,
+                env_image_tag=env_image_tag,
+            )
+            for instance in publish_dataset
+        ]
+        push_failures = push_instance_images(client, specs, cache)
+        return 1 if push_failures else status
 
     # Pre-flight: every repo in the dataset must be classified into a JVM bucket
     # (or have a bespoke customization file). Surfacing this before any Docker
@@ -244,7 +268,7 @@ def main(
 
     if len(dataset) == 0:
         print("All images exist. Nothing left to build.")
-        return 0
+        return finish()
 
     # When --rebuild_failures is set, treat the kept instances as forced
     # rebuilds in filter_dataset_to_build so a stale-fail entry whose image
@@ -261,7 +285,7 @@ def main(
 
     if len(dataset) == 0:
         print("All images exist. Nothing left to build.")
-        return 0
+        return finish()
 
     # Build a cache-writing callback so the file is updated after each image build
     on_complete = None
@@ -289,6 +313,7 @@ def main(
 
     print(f"Successfully built {len(successful)} images")
     print(f"Failed to build {len(failed)} images")
+    return finish(1 if failed else 0)
 
 
 if __name__ == "__main__":
@@ -345,5 +370,10 @@ if __name__ == "__main__":
             "failures and fill gaps without going as broad as --force_rebuild."
         ),
     )
+    parser.add_argument(
+        "--push",
+        action="store_true",
+        help="Push selected successful instance images after building",
+    )
     args = parser.parse_args()
-    main(**vars(args))
+    raise SystemExit(main(**vars(args)))

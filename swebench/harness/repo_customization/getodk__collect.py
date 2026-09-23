@@ -3,14 +3,14 @@ from swebench.harness.constants.jvm_base import (
     SPECS_ANDROID_17,
 )
 
-REPO = "wireapp/wire-android"
+REPO = "getodk/collect"
 
-# The repo uses a `kalium` git submodule that must be initialized after clone.
+# The root test suite exceeds the evaluation container's memory with the
+# default Gradle and Kotlin daemon heaps.
 SPECS = {
     "1.0.0": {
         **SPECS_ANDROID_17["1.0.0"],
         "pre_install": [
-            "git submodule update --init --recursive || true",
             GRADLE_PROPERTIES_SCRIPT_LOW_MEM,
             *SPECS_ANDROID_17["1.0.0"]["pre_install"][1:],
         ],

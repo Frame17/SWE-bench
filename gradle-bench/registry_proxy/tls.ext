@@ -1,0 +1,2 @@
+subjectAltName=DNS:repo.maven.apache.org,DNS:repo1.maven.org,DNS:plugins.gradle.org,DNS:maven.reposilite.com
+extendedKeyUsage=serverAuth
