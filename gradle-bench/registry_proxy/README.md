@@ -13,6 +13,8 @@ Set `DEPENDENCY_GATEWAY` to an existing gateway address to skip local startup. S
 value to disable routing. A custom `DEPENDENCY_GATEWAY_ENV_FILE` requires
 `DEPENDENCY_GATEWAY_CA_CERT`. The Compose environment also accepts custom TLS files, upstream CA,
 upstream authorization headers, and Maven or Plugin Portal upstream addresses.
+The artifact redirect target can be changed independently with
+`GRADLE_PLUGIN_ARTIFACTS_UPSTREAM` and `GRADLE_PLUGIN_ARTIFACTS_UPSTREAM_HOST`.
 
 Verify a running gateway with:
 

@@ -11,6 +11,7 @@ DEPENDENCY_GATEWAY_HOSTS = (
     "repo.maven.apache.org",
     "repo1.maven.org",
     "plugins.gradle.org",
+    "plugins-artifacts.gradle.org",
     "maven.reposilite.com",
 )
 DEPENDENCY_GATEWAY_TRUST_VERSION = "2"

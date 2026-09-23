@@ -8,6 +8,11 @@ upstream gradle_plugin_portal_upstream {
     keepalive 32;
 }
 
+upstream gradle_plugin_artifacts_upstream {
+    server ${GRADLE_PLUGIN_ARTIFACTS_UPSTREAM};
+    keepalive 32;
+}
+
 upstream reposilite_upstream {
     server maven.reposilite.com:443;
     keepalive 16;
@@ -60,6 +65,27 @@ server {
         proxy_pass https://gradle_plugin_portal_upstream${GRADLE_PLUGIN_PORTAL_UPSTREAM_PATH}/;
     }
     location / { return 404; }
+}
+
+server {
+    listen 443 ssl;
+    server_name plugins-artifacts.gradle.org;
+    ssl_certificate /etc/nginx/tls/tls.crt;
+    ssl_certificate_key /etc/nginx/tls/tls.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_set_header Connection "";
+        proxy_set_header Host ${GRADLE_PLUGIN_ARTIFACTS_UPSTREAM_HOST};
+        include /etc/nginx/upstream-headers.conf;
+        proxy_ssl_name ${GRADLE_PLUGIN_ARTIFACTS_UPSTREAM_HOST};
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/tls/upstream-ca.crt;
+        proxy_pass https://gradle_plugin_artifacts_upstream;
+    }
 }
 
 server {

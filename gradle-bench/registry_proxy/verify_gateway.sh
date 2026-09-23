@@ -8,7 +8,18 @@ usage() {
 
 [[ -n ${GATEWAY_IP:-} ]] || usage
 
-curl_args=(--fail --silent --show-error --output /dev/null)
+curl_args=(
+  --fail
+  --silent
+  --show-error
+  --location
+  --output /dev/null
+  --resolve "repo.maven.apache.org:443:$GATEWAY_IP"
+  --resolve "repo1.maven.org:443:$GATEWAY_IP"
+  --resolve "plugins.gradle.org:443:$GATEWAY_IP"
+  --resolve "plugins-artifacts.gradle.org:443:$GATEWAY_IP"
+  --resolve "maven.reposilite.com:443:$GATEWAY_IP"
+)
 if [[ -n ${CA_CERT:-} ]]; then curl_args+=(--cacert "$CA_CERT"); fi
 
 check() {
@@ -19,6 +30,6 @@ check() {
 
 check repo.maven.apache.org /maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.0/kotlin-stdlib-1.9.0.pom
 check repo1.maven.org /maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.0/kotlin-stdlib-1.9.0.pom
-check plugins.gradle.org /m2/org/jetbrains/kotlin/jvm/org.jetbrains.kotlin.jvm.gradle.plugin/1.9.0/org.jetbrains.kotlin.jvm.gradle.plugin-1.9.0.pom
+check plugins.gradle.org /m2/org/jetbrains/intellij/platform/intellij-platform-gradle-plugin/2.12.0/intellij-platform-gradle-plugin-2.12.0.pom
 check maven.reposilite.com /maven-central/org/jetbrains/kotlin/kotlin-stdlib/1.9.0/kotlin-stdlib-1.9.0.pom
 check maven.reposilite.com /releases/com/reposilite/reposilite/3.5.19/reposilite-3.5.19.pom
